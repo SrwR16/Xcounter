@@ -22,26 +22,28 @@ from django.http import JsonResponse
 from django.urls import include, path
 
 
-def home(request):
+def home_view(request):
     return JsonResponse(
         {
             "message": "Welcome to XCounter API",
             "endpoints": {
                 "admin": "/admin/",
-                "auth": "/api/auth/",
-                "movies": "/api/movies/",
-                "api_docs": "/api-auth/",
+                "api": {
+                    "users": "/api/users/",
+                    "movies": "/api/movies/",
+                    "bookings": "/api/bookings/",
+                },
             },
         }
     )
 
 
 urlpatterns = [
-    path("", home, name="home"),
+    path("", home_view, name="home"),
     path("admin/", admin.site.urls),
-    path("api/auth/", include("users.urls")),
+    path("api/users/", include("users.urls")),
     path("api/movies/", include("movies.urls")),
-    path("api-auth/", include("rest_framework.urls")),
+    path("api/bookings/", include("bookings.urls")),
 ]
 
 # Serve media files in development

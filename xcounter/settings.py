@@ -51,9 +51,9 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     # Local apps
-    "users",
-    "movies",
-    "bookings",
+    "users.apps.UsersConfig",
+    "movies.apps.MoviesConfig",
+    "bookings.apps.BookingsConfig",
     "coupons",
     "dashboard",
     "notifications",
