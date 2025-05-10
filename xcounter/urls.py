@@ -29,6 +29,7 @@ def home(request):
             "endpoints": {
                 "admin": "/admin/",
                 "auth": "/api/auth/",
+                "movies": "/api/movies/",
                 "api_docs": "/api-auth/",
             },
         }
@@ -39,6 +40,7 @@ urlpatterns = [
     path("", home, name="home"),
     path("admin/", admin.site.urls),
     path("api/auth/", include("users.urls")),
+    path("api/movies/", include("movies.urls")),
     path("api-auth/", include("rest_framework.urls")),
 ]
 
