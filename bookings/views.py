@@ -5,6 +5,7 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from movies.models import Show
 from users.permissions import IsAdmin
 
 from .models import Booking, BookingStatus, PaymentStatus, Ticket
@@ -52,11 +53,56 @@ class BookingViewSet(viewsets.ModelViewSet):
         return BookingDetailSerializer
 
     def get_permissions(self):
-        if self.action == "create":
+        if self.action in ["create", "seats"]:
             return [permissions.IsAuthenticated()]
         elif self.action in ["update", "partial_update", "destroy"]:
             return [permissions.IsAuthenticated(), IsAdmin()]
         return [permissions.IsAuthenticated()]
+
+    @action(detail=False, methods=["get"])
+    def seats(self, request):
+        """Get available seats for a show"""
+        show_id = request.query_params.get("show_id")
+        if not show_id:
+            return Response(
+                {"detail": "show_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            show = Show.objects.get(pk=show_id, is_active=True)
+        except Show.DoesNotExist:
+            return Response(
+                {"detail": "Show not found or is not active"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get booked seats
+        booked_seats = Ticket.objects.filter(
+            booking__show=show,
+            booking__booking_status__in=[
+                BookingStatus.RESERVED,
+                BookingStatus.CONFIRMED,
+            ],
+        ).values_list("seat_number", flat=True)
+
+        # Generate all possible seats (example: A1-A10, B1-B10, etc.)
+        rows = "ABCDEFGHIJ"
+        cols = range(1, 11)  # 1-10
+        all_seats = [f"{row}{col}" for row in rows for col in cols]
+
+        # Filter out booked seats
+        available_seats = [seat for seat in all_seats if seat not in booked_seats]
+
+        return Response(
+            {
+                "show_id": show_id,
+                "total_seats": show.total_seats,
+                "available_seats_count": show.available_seats,
+                "available_seats": available_seats,
+                "booked_seats": list(booked_seats),
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):

@@ -25,14 +25,14 @@ from django.urls import include, path
 def home_view(request):
     return JsonResponse(
         {
-            "message": "Welcome to XCounter API",
+            "message": "XCounter Movie Booking API",
             "endpoints": {
-                "admin": "/admin/",
-                "api": {
-                    "users": "/api/users/",
-                    "movies": "/api/movies/",
-                    "bookings": "/api/bookings/",
-                },
+                "users": "api/users/",
+                "movies": "api/movies/",
+                "bookings": "api/bookings/",
+                "coupons": "api/coupons/",
+                "promotions": "api/promotions/",
+                "docs": "/swagger/",
             },
         }
     )
@@ -44,6 +44,8 @@ urlpatterns = [
     path("api/users/", include("users.urls")),
     path("api/movies/", include("movies.urls")),
     path("api/bookings/", include("bookings.urls")),
+    path("api/coupons/", include("coupons.urls")),
+    path("api/promotions/", include("promotions.urls")),
 ]
 
 # Serve media files in development

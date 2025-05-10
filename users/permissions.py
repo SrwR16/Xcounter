@@ -14,6 +14,32 @@ class IsAdmin(permissions.BasePermission):
         return False
 
 
+class IsAdminUser(permissions.BasePermission):
+    """
+    Permission check for Django admin user access.
+    """
+
+    message = "Only admin users have access to this resource."
+
+    def has_permission(self, request, view):
+        if request.user and request.user.is_authenticated:
+            return request.user.is_staff and request.user.is_admin
+        return False
+
+
+class IsStaffUser(permissions.BasePermission):
+    """
+    Permission check for staff user access.
+    """
+
+    message = "Only staff users have access to this resource."
+
+    def has_permission(self, request, view):
+        if request.user and request.user.is_authenticated:
+            return request.user.is_staff
+        return False
+
+
 class IsAdminOrModerator(permissions.BasePermission):
     """
     Permission check for admin or moderator access.
