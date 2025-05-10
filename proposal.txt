@@ -1,0 +1,380 @@
+Project Summary: Movie Counter Event Booking System
+This project is an event booking system designed for a movie theater, where users can book tickets online, apply discount coupons, and view various movie details. The system includes four types of users: Admin, Moderator, Salesman, and Customer, each with specific roles and permissions.
+This system includes key features such as user role-based access, email validation for authentication, real-time notifications, PDF generation, a promotion system based on ticket purchases, and data-driven dashboards for Admin and Moderator roles.
+Feature List:
+User Roles:
+Admin:
+Full control over the system.
+Can create, update, and delete movies and shows.
+Can manage all employees (Salesmen and Moderators).
+Access to a detailed dashboard with weekly, monthly, and yearly reviews of ticket sales and movie performance.
+Can generate and download PDF reports for sales and employee performance.
+Reserve special tickets for VIPs.
+Assign increments or impose penalties on employees.
+Moderator:
+Manage ticket bookings, cancellations, and updates.
+Can view and manage showtimes, create and manage discount coupons, and assign Salesmen.
+View a dashboard showing total ticket sales, canceled bookings, and overall employee performance.
+Responsible for handling salary management for Salesmen (increments and penalties).
+Salesman:
+Can view available tickets and book them on behalf of Customers.
+Update or cancel bookings and view booking history.
+Manage only their own assigned bookings.
+Customer:
+Can view and book tickets for different movies and showtimes.
+Apply discount coupons for ticket purchases.
+Receive email notifications for booking confirmations, new movie releases, and promotions.
+Eligible for automatic promotion based on annual ticket purchases (Silver, Gold, Platinum) with discounts.
+View their booking history and download PDF invoices.
+Key Features:
+Authentication & Security:
+User authentication with email validation.
+Role-based access control for Admin, Moderator, Salesman, and Customer.
+Two-factor authentication (2FA) for Admins and Moderators for added security.
+Ticket Booking and Management:
+Customers can book tickets online, view available tickets, and apply discount coupons.
+Salesmen can book, update, and cancel tickets for Customers.
+Admin and Moderator can view and manage all bookings.
+Coupon and Discount System:
+Moderators can create, update, and delete discount coupons.
+Coupons can be applied by Customers during booking for discounts.
+Promotion System:
+Automatic customer promotion based on annual ticket purchases:
+Silver (100 tickets): 5% discount.
+Gold (300 tickets): 10% discount.
+Platinum (500 tickets): 20% discount.
+PDF Generation:
+PDF ticket generation for Customers upon booking.
+Admin can generate and download detailed PDF reports on ticket sales, revenue, and employee performance.
+Email Notifications:
+Real-time email notifications for Customers after booking, cancellation, new movie releases, and promotions.
+Admins and Moderators can send bulk emails to Customers regarding new offers.
+Dashboards:
+Admin Dashboard: Weekly, monthly, and yearly reports on ticket sales, revenue, and performance.
+Moderator Dashboard: Total tickets sold, canceled, and performance statistics for assigned employees.
+Employee and Salary Management:
+Admin and Moderators can manage employees, track salary history, and update salary statuses.
+Employees (Salesmen and Moderators) can receive notifications for salary updates and penalties.
+Customer Reviews and Ratings:
+Customers can leave reviews and rate movies.
+Admin and Moderator can moderate and manage movie reviews.
+Internal Messaging System:
+Customers can send messages to Admins or Moderators for queries or support.
+Admins and Moderators can respond to Customer messages within the system.
+Management Commands:
+Custom commands to automate routine tasks, such as sending email notifications, cleaning expired coupons, and generating monthly reports.
+System Optimization:
+Database optimization for faster queries and better performance.
+Caching frequently accessed data to reduce database load.
+Pagination for large datasets.
+
+
+
+
+
+
+
+Day 1: Project Setup and User Authentication
+Tasks:
+Initialize the Django project and create the base structure.
+Set up user roles (Admin, Moderator, Salesman, Customer) using Django’s custom User model with email validation.
+Implement basic authentication using Django’s built-in authentication system (login, logout, registration).
+Configure email validation during user registration.
+Set up basic views and URLs for login, logout, and registration.
+Feature Highlights:
+Custom User model with role-based access.
+Email validation for registration.
+Day 2: User Profiles and Role-Based Permissions
+Tasks:
+Create User Profile model extending the custom User model with additional fields like full name, contact, and role.
+Implement user-specific dashboards (e.g., Admin Dashboard, Moderator Dashboard).
+Configure permissions based on user roles (e.g., Salesman can only view and book tickets, Admin can manage all).
+Set up profile editing functionality.
+Feature Highlights:
+Role-based dashboard routing.
+User profiles with specific fields and edit functionality.
+Day 3: Movie and Show Management (Admin/Moderator)
+Tasks:
+Create models for Movie, Show, and Ticket.
+Implement CRUD operations for movies (Admin), shows (Moderator), and tickets (Salesman).
+Set up views and templates for creating and managing movies and shows.
+Restrict access so that only Admin can manage movies, and Moderator can manage shows.
+Feature Highlights:
+Movie and Show models with role-based access for creating/updating/deleting.
+Show booking slots and management by Moderators.
+Day 4: Booking System for Salesman and Customer
+Tasks:
+Create views for Salesman to book, update, or cancel tickets for available shows.
+Allow Customers to view available movies, select showtimes, and book tickets.
+Set up coupon system where Customers can apply discount codes during ticket booking.
+Feature Highlights:
+Dynamic ticket booking system with coupon codes.
+Implement a simple logic for checking available tickets and applying discounts.
+Day 5: Email Notifications and Basic PDF Ticket Generation
+Tasks:
+Implement email notifications for Customers after booking (confirmation email with ticket details).
+Set up email notifications for Admin and Moderators when a new booking or cancellation happens.
+Generate a basic PDF version of the ticket using a library like reportlab or WeasyPrint, which will be emailed to the Customer.
+Feature Highlights:
+Email notification system for important actions (booking, cancellation).
+PDF generation for ticket confirmations.
+Day 6: Advanced Ticket Booking and Cancellation Features
+Tasks:
+Extend the booking system to include update and cancel functionalities.
+Allow Salesmen to update bookings (e.g., change showtimes, modify customer details).
+Implement logic for canceling bookings, updating the availability of tickets, and sending cancellation notifications to the Customer.
+Salesmen should only see their assigned bookings; Admin and Moderator can view all bookings.
+Feature Highlights:
+Booking updates and cancellations by Salesmen.
+Availability adjustments for canceled tickets.
+Email notifications for booking updates and cancellations.
+Day 7: Coupon System and Customer Discounts
+Tasks:
+Implement a coupon system where Moderators can create, update, and delete coupons.
+Create a model for Coupons with fields like code, discount percentage, validity period, and usage limits.
+Allow Customers to apply coupon codes during ticket booking.
+Implement validation checks to ensure that the coupon is valid and has not expired or exceeded its usage limit.
+Feature Highlights:
+Coupon management by Moderators.
+Real-time coupon validation during ticket purchase.
+Automatic discount application based on coupon code.
+Day 8: Moderator Dashboard - Ticket Sales Overview
+Tasks:
+Design the Moderator dashboard to show an overview of ticket sales, including:
+Total tickets sold.
+Total tickets canceled.
+Revenue generated (based on ticket prices and applied discounts).
+Display charts or graphs to visualize data (use libraries like Chart.js or Django Plotly Dash).
+Include a list of recent bookings and cancellations for quick reference.
+Feature Highlights:
+Data-intensive dashboard for Moderators showing key metrics.
+Real-time tracking of ticket sales and cancellations.
+Visual representation of data using charts or graphs.
+Day 9: Salary Management System for Salesmen (Moderator Role)
+Tasks:
+Implement a salary management system where Moderators can view and update Salesman salary information.
+Add fields to the Salesman profile for salary and payment status (e.g., "Paid" or "Unpaid").
+Allow Moderators to increment the salary or impose deductions for disciplinary actions with a reason field.
+Ensure proper permissions are in place so that only Moderators and Admin can view or modify salary details.
+Feature Highlights:
+Salary management feature for Salesmen by Moderators.
+Ability to update payment status, apply increments, or impose deductions.
+Notifications to Salesmen when their salary status changes.
+Day 10: Customer Promotion System
+Tasks:
+Implement a promotion system for Customers based on the number of tickets purchased in a year:
+Silver (100 tickets): 5% discount.
+Gold (300 tickets): 10% discount.
+Platinum (500 tickets): 20% discount.
+Automatically assign promotion levels to Customers based on ticket purchases.
+Display promotion status on the Customer dashboard.
+Apply the corresponding discount automatically during ticket booking.
+Feature Highlights:
+Customer promotion levels based on annual ticket purchases.
+Automatic discount application based on promotion status.
+Display promotion status and benefits on the Customer dashboard.
+Day 11: Notifications and Messaging System
+Tasks:
+Implement an email notification system where:
+Customers receive notifications for new movies, promotions, and updates.
+Customers receive messages for important actions (e.g., booking confirmations, cancellations, new offers).
+Add a messaging feature where Admins or Moderators can send bulk email notifications to all Customers or specific groups (e.g., Silver, Gold, Platinum members).
+Set up templates for each type of notification (e.g., new movie release, upcoming events).
+Use Django’s send_mail() or a service like SendGrid for email sending.
+Feature Highlights:
+Email notifications for movie updates, promotions, and important actions.
+Messaging functionality for Admins and Moderators to notify Customers in bulk.
+Templated email notifications for consistency.
+Day 12: Admin Dashboard - Data-Driven Insights
+Tasks:
+Create a comprehensive Admin dashboard that includes:
+Weekly, monthly, and yearly ticket sales data.
+Total revenue generated with a breakdown by movie genre (e.g., action, comedy).
+Insights on the most profitable genres and most popular movies.
+The total number of employees, and ticket booking breakdown by Salesman.
+Use charts, tables, and visual tools (e.g., Django Plotly Dash) to display data.
+Feature Highlights:
+Advanced data insights for Admins, including weekly, monthly, and yearly reviews.
+Profitability reports based on movie genres.
+Salesman performance tracking on the Admin dashboard.
+Day 13: Employee Management (Admin Role)
+Tasks:
+Implement functionality for Admins to view, create, update, and remove employees (Salesmen and Moderators).
+Add functionality to track each employee’s status, including:
+Employment start date.
+Salary history and performance-based increments.
+Current role and responsibilities (Salesman/Moderator).
+Allow Admins to increment salaries or impose penalties, similar to Moderator functionality but with full control.
+Implement functionality for Admins to remove or suspend employees with reasons recorded.
+Feature Highlights:
+Full employee management for Admins, including the ability to remove or promote employees.
+Record employee salary history and performance tracking.
+Day 14: Customer Dashboard and Booking History
+Tasks:
+Create a detailed Customer dashboard that includes:
+View of all past bookings, with the ability to download tickets as PDFs.
+Promotion status (Silver, Gold, Platinum) and benefits (e.g., available discounts).
+Ability to manage account details, including changing email, password, and contact information.
+Integrate a feature where Customers can easily download their booking details as a PDF from the dashboard.
+Feature Highlights:
+Comprehensive Customer dashboard with booking history and promotion status.
+Downloadable PDFs for booking confirmations.
+Customer account management functionality.
+Day 15: Management Commands for Cleanup and Notifications
+Tasks:
+Write custom Django management commands to automate key tasks, such as:
+Sending periodic email notifications for upcoming movies and promotions.
+Cleaning up expired coupons or shows that have been canceled.
+Running reports on movie performance for Admins.
+Schedule these commands using cron jobs or Django Celery to run periodically.
+Feature Highlights:
+Automated management commands for routine tasks like sending notifications and cleaning expired data.
+Scheduling tasks to run at specific intervals using cron or Celery.
+Day 16: Email Validation and Account Security
+Tasks:
+Implement a system where every user (Admin, Moderator, Salesman, Customer) needs to validate their email address before accessing the system.
+Use Django's built-in email_verification process or third-party packages like django-allauth to handle this.
+Ensure that users cannot log in or perform any actions until their email has been validated.
+Add email change confirmation to enhance account security.
+Feature Highlights:
+Email validation for user accounts during registration and when updating email addresses.
+Secure the user authentication process by verifying the authenticity of users’ emails.
+Day 17: Generate Comprehensive PDF Reports
+Tasks:
+Allow Admins to generate comprehensive PDF reports from the dashboard, such as:
+Sales report by movie.
+Revenue generated by ticket type (standard, VIP, etc.).
+Employee performance report.
+Use reportlab, WeasyPrint, or another PDF generation library to create formatted reports.
+Include date filters (weekly, monthly, yearly) for report generation.
+Ensure that these reports can be downloaded directly from the Admin dashboard.
+Feature Highlights:
+Admins can generate and download detailed PDF reports.
+PDF reports can be filtered by date for different time periods (weekly, monthly, yearly).
+Day 18: Customer Messaging System (Internal)
+Tasks:
+Implement an internal messaging system where Customers can communicate with Admins or Moderators.
+Set up a form for Customers to submit queries, complaints, or feedback from their dashboard.
+Create a feature for Admins or Moderators to respond to these messages within the system (a simple messaging interface).
+Notifications for both Customers and Admins when a message is received or replied to.
+Feature Highlights:
+Internal messaging system for Customers to communicate directly with Admins and Moderators.
+Notifications for new messages and replies, improving user engagement and support.
+Day 19: Implement Custom Error Handling and User Feedback
+Tasks:
+Implement custom error pages for common errors like 404 (page not found), 403 (permission denied), and 500 (server error).
+Create friendly error messages for form validations (e.g., booking errors, coupon code issues) and display feedback to users.
+Set up a feedback system where users (Customers, Salesmen, Moderators) can report issues or submit feedback directly from the dashboard.
+Feature Highlights:
+Custom error pages and improved error handling for a smoother user experience.
+Feedback system for users to report issues or provide input to Admins.
+Day 20: Optimize Database Queries and Performance
+Tasks:
+Review the system for potential performance bottlenecks, especially for queries related to ticket sales, movie listings, and employee management.
+Use Django’s select_related, prefetch_related, and query optimizations to ensure efficient database access.
+Run tests to measure query performance and improve response times.
+Add database indexes where necessary for high-traffic models (e.g., Movie, Show, Ticket).
+Feature Highlights:
+Optimized database queries for improved performance.
+Query optimizations and index creation for key database tables.
+Day 21: Implement Customer Promotion System
+Tasks:
+Finalize and test the Customer promotion system based on the number of tickets purchased within a year:
+Silver (100 tickets): 5% discount.
+Gold (300 tickets): 10% discount.
+Platinum (500 tickets): 20% discount.
+Automatically calculate and assign promotions when the purchase threshold is met.
+Add a feature on the Customer dashboard to display their current status and benefits.
+Implement logic to adjust discounts automatically when Customers book tickets (based on their promotion status).
+Feature Highlights:
+Fully functional promotion system based on ticket purchases.
+Automatic discount application for Silver, Gold, and Platinum Customers.
+Day 22: Customer Reviews and Feedback for Movies
+Tasks:
+Implement a system for Customers to leave reviews and ratings for movies they have booked tickets for.
+Create a model for reviews with fields like rating (1 to 5 stars), review_text, and date_posted.
+Add a feature for Customers to view and edit their reviews on their dashboard.
+Allow Admins and Moderators to moderate and approve or delete reviews if necessary.
+Display movie reviews on the movie detail page for other Customers to view.
+Feature Highlights:
+Review and rating system for movies.
+Moderation functionality for Admins and Moderators to manage reviews.
+Day 23: Implement Automated System Notifications
+Tasks:
+Set up automated notifications for the following events:
+When a Customer is promoted to a higher tier (Silver, Gold, Platinum).
+When new movies or shows are added to the system.
+When a Customer’s booking is confirmed, updated, or canceled.
+Use Django signals to trigger notifications at appropriate points in the booking and promotion workflow.
+Ensure that Customers receive these notifications via email.
+Feature Highlights:
+Automated email notifications for major events such as promotions, new movies, and booking updates.
+Notifications triggered by Django signals for real-time updates.
+Day 24: Comprehensive System Testing
+Tasks:
+Write unit tests and integration tests for all critical features (e.g., booking system, promotions, employee management, coupon system).
+Use Django’s testing framework to ensure the functionality of views, models, and forms.
+Test email notifications and PDF generation.
+Ensure that user roles and permissions are properly enforced across the system.
+Perform manual testing of edge cases and ensure proper error handling is in place.
+Feature Highlights:
+Full system test coverage for all critical features.
+Manual and automated testing for real-world scenarios and edge cases.
+Day 25: Final Touches and Project Review
+Tasks:
+Review the entire system to ensure all functionality works as expected.
+Polish the UI for all dashboards and views, ensuring consistency and usability.
+Add any final tweaks or improvements based on feedback from earlier testing.
+Ensure that the system is fully responsive and works on mobile devices (using Bootstrap or Tailwind CSS).
+Prepare for deployment by setting up environment variables, updating security settings, and configuring the database.
+Feature Highlights:
+Final UI and UX improvements across all dashboards.
+Ready the project for deployment with security and environment configurations.
+Day 26: PDF Invoice Generation for Customers
+Tasks:
+Extend the PDF generation functionality to include invoices for bookings.
+After each successful booking, generate a detailed PDF invoice containing:
+Booking reference number.
+Movie and show details (e.g., time, date, seat number).
+Price breakdown (including any applied discounts or coupons).
+Provide a button on the Customer dashboard to download their invoice.
+Ensure the PDF invoice is automatically attached to the booking confirmation email.
+Feature Highlights:
+PDF invoice generation for booking confirmations.
+Invoices accessible via the Customer dashboard and attached to confirmation emails.
+Day 27: Admin Monthly and Yearly Report Generation
+Tasks:
+Implement a system for Admins to generate monthly and yearly reports.
+The report should include:
+Total tickets sold.
+Total revenue generated.
+Breakdown by movie genre (e.g., most profitable genres).
+Employee performance (e.g., total bookings handled by Salesmen).
+Generate the report in PDF format so that Admins can download it directly from the dashboard.
+Add email functionality to automatically send monthly or yearly reports to Admins.
+Feature Highlights:
+Monthly and yearly report generation in PDF format.
+Automatic email delivery of reports to Admins for better business tracking.
+Day 28: Final Deployment and Environment Setup
+Tasks:
+Prepare the application for deployment on a cloud platform (e.g., AWS, Heroku, DigitalOcean).
+Configure environment variables for sensitive data (e.g., database credentials, email service API keys).
+Set up the production database (PostgreSQL) and ensure proper migrations are run.
+Configure static and media file handling for production.
+Set up automated backups and database security policies.
+Feature Highlights:
+Full deployment on a cloud service.
+Environment setup with sensitive data securely managed through environment variables.
+Day [29, 30]: Writing Documentation and Final Testing
+Tasks:
+Write complete project documentation, including:
+Installation and setup instructions.
+Detailed explanations of the system’s features and functionality.
+User guides for Admin, Moderator, Salesman, and Customer roles.
+API documentation if any endpoints were created using DRF.
+Conduct final system-wide testing to ensure all features function properly in the production environment.
+Run stress tests and simulate high traffic to ensure the system can handle the load.
+Conduct a final review of the project with your students and collect feedback.
+Feature Highlights:
+Full project documentation for users and developers.
+Final round of testing and stress testing to ensure production readiness.
