@@ -32,6 +32,7 @@ def home_view(request):
                 "bookings": "api/bookings/",
                 "coupons": "api/coupons/",
                 "promotions": "api/promotions/",
+                "employees": "api/employees/",
                 "docs": "/swagger/",
             },
         }
@@ -46,6 +47,7 @@ urlpatterns = [
     path("api/bookings/", include("bookings.urls")),
     path("api/coupons/", include("coupons.urls")),
     path("api/promotions/", include("promotions.urls")),
+    path("api/employees/", include("employees.urls")),
 ]
 
 # Serve media files in development
