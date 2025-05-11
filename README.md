@@ -124,6 +124,74 @@ The notification system has been enhanced with:
 
 4. Automated notification triggers for relevant events
 
+## Advanced Reporting and Visualization
+
+The system includes comprehensive data visualization and reporting capabilities:
+
+### Chart Visualizations
+
+The dashboard includes interactive charts and graphs for key metrics:
+
+- Movie ratings visualization
+- Bookings over time analysis
+- Genre distribution charts
+- Ticket type usage analysis
+- Monthly revenue reports
+
+These visualizations can be accessed through:
+
+1. The API endpoints:
+
+   - `/dashboard/charts/movie-ratings/`
+   - `/dashboard/charts/bookings-over-time/`
+   - `/dashboard/charts/genre-distribution/`
+   - `/dashboard/charts/ticket-types/`
+   - `/dashboard/charts/monthly-revenue/`
+
+2. Generated with reports using the management command:
+
+   ```
+   python manage.py generate_monthly_report --include-charts
+   ```
+
+3. Using the visualization demo script:
+   ```
+   python test_visualizations.py
+   ```
+
+### System Optimization
+
+The application includes several optimization features:
+
+#### 1. Database Optimization
+
+- Efficient model indexes for frequently queried fields
+- Optimized query patterns using select_related and prefetch_related
+- Annotations and aggregations to reduce query counts
+
+#### 2. Caching System
+
+- Multi-level caching strategy using Django's caching framework
+- Memory-based caching for frequently accessed data
+- File-based cache for larger datasets
+- Cache decorators for expensive database queries and calculations
+
+To enable the full caching middleware, set the `ENABLE_CACHE_MIDDLEWARE` environment variable to `True`.
+
+#### 3. Query Optimization
+
+Enhanced views with optimized database access patterns:
+
+- Proper prefetching of related objects
+- Efficient use of annotations for computed fields
+- Reduced database round-trips
+
+#### 4. Report Generation
+
+- CSV and text-based reports for different data views
+- Visualization-ready JSON output for charts
+- Interactive HTML reports with Chart.js integration
+
 ## Setup Instructions
 
 1. Clone the repository:

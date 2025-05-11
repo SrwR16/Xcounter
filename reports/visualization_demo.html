@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Movie Counter Visualization Demo</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .chart-container {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+        padding: 20px;
+      }
+      h1 {
+        color: #333;
+        border-bottom: 2px solid #ddd;
+        padding-bottom: 10px;
+      }
+      h2 {
+        color: #444;
+      }
+      canvas {
+        max-height: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Movie Counter Visualization Demo</h1>
+      <p>Advanced charts and visualizations for movie and booking data</p>
+
+      <div class="chart-container">
+        <h2>Movie Ratings</h2>
+        <div>
+          <canvas id="movie_ratings"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <h2>Bookings Over Time</h2>
+        <div>
+          <canvas id="bookings_time"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <h2>Genre Distribution</h2>
+        <div>
+          <canvas id="genre_distribution"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <h2>Ticket Types</h2>
+        <div>
+          <canvas id="ticket_types"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <h2>Monthly Revenue</h2>
+        <div>
+          <canvas id="monthly_revenue"></canvas>
+        </div>
+      </div>
+
+      <script>
+        // Example data for Movie Ratings chart
+        const movieRatingsChart = new Chart(document.getElementById("movie_ratings").getContext("2d"), {
+          type: "bar",
+          data: {
+            labels: ["Avatar", "The Avengers", "Inception", "The Dark Knight", "Joker", "The Matrix"],
+            datasets: [
+              {
+                label: "Average Rating",
+                data: [4.7, 4.4, 4.8, 4.9, 4.2, 4.6],
+                backgroundColor: [
+                  "rgba(54, 162, 235, 0.7)",
+                  "rgba(255, 99, 132, 0.7)",
+                  "rgba(75, 192, 192, 0.7)",
+                  "rgba(153, 102, 255, 0.7)",
+                  "rgba(255, 159, 64, 0.7)",
+                  "rgba(255, 206, 86, 0.7)",
+                ],
+                borderColor: [
+                  "rgba(54, 162, 235, 1)",
+                  "rgba(255, 99, 132, 1)",
+                  "rgba(75, 192, 192, 1)",
+                  "rgba(153, 102, 255, 1)",
+                  "rgba(255, 159, 64, 1)",
+                  "rgba(255, 206, 86, 1)",
+                ],
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 5,
+              },
+            },
+          },
+        });
+
+        // Example data for Bookings Over Time chart
+        const bookingsTimeChart = new Chart(document.getElementById("bookings_time").getContext("2d"), {
+          type: "line",
+          data: {
+            labels: ["May 1", "May 2", "May 3", "May 4", "May 5", "May 6", "May 7"],
+            datasets: [
+              {
+                label: "Bookings",
+                data: [12, 19, 15, 22, 10, 25, 18],
+                backgroundColor: "rgba(54, 162, 235, 0.2)",
+                borderColor: "rgba(54, 162, 235, 1)",
+                borderWidth: 1,
+                yAxisID: "y",
+              },
+              {
+                label: "Revenue",
+                data: [1200, 1900, 1500, 2200, 1000, 2500, 1800],
+                backgroundColor: "rgba(255, 99, 132, 0.2)",
+                borderColor: "rgba(255, 99, 132, 1)",
+                borderWidth: 1,
+                yAxisID: "y1",
+              },
+            ],
+          },
+          options: {
+            scales: {
+              y: {
+                type: "linear",
+                display: true,
+                position: "left",
+                title: {
+                  display: true,
+                  text: "Number of Bookings",
+                },
+              },
+              y1: {
+                type: "linear",
+                display: true,
+                position: "right",
+                title: {
+                  display: true,
+                  text: "Revenue",
+                },
+                grid: {
+                  drawOnChartArea: false,
+                },
+              },
+            },
+          },
+        });
+
+        // Example data for Genre Distribution chart
+        const genreDistributionChart = new Chart(document.getElementById("genre_distribution").getContext("2d"), {
+          type: "pie",
+          data: {
+            labels: ["Action", "Comedy", "Drama", "Sci-Fi", "Horror", "Romance"],
+            datasets: [
+              {
+                label: "Bookings by Genre",
+                data: [250, 180, 150, 210, 120, 90],
+                backgroundColor: [
+                  "rgba(255, 99, 132, 0.7)",
+                  "rgba(54, 162, 235, 0.7)",
+                  "rgba(255, 206, 86, 0.7)",
+                  "rgba(75, 192, 192, 0.7)",
+                  "rgba(153, 102, 255, 0.7)",
+                  "rgba(255, 159, 64, 0.7)",
+                ],
+                borderColor: [
+                  "rgba(255, 99, 132, 1)",
+                  "rgba(54, 162, 235, 1)",
+                  "rgba(255, 206, 86, 1)",
+                  "rgba(75, 192, 192, 1)",
+                  "rgba(153, 102, 255, 1)",
+                  "rgba(255, 159, 64, 1)",
+                ],
+                borderWidth: 1,
+              },
+            ],
+          },
+        });
+
+        // Example data for Ticket Types chart
+        const ticketTypesChart = new Chart(document.getElementById("ticket_types").getContext("2d"), {
+          type: "doughnut",
+          data: {
+            labels: ["Standard", "Premium", "VIP"],
+            datasets: [
+              {
+                label: "Tickets by Type",
+                data: [540, 320, 140],
+                backgroundColor: ["rgba(54, 162, 235, 0.7)", "rgba(75, 192, 192, 0.7)", "rgba(255, 99, 132, 0.7)"],
+                borderColor: ["rgba(54, 162, 235, 1)", "rgba(75, 192, 192, 1)", "rgba(255, 99, 132, 1)"],
+                borderWidth: 1,
+              },
+            ],
+          },
+        });
+
+        // Example data for Monthly Revenue chart
+        const monthlyRevenueChart = new Chart(document.getElementById("monthly_revenue").getContext("2d"), {
+          type: "bar",
+          data: {
+            labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+            datasets: [
+              {
+                label: "Gross Revenue",
+                data: [12500, 19000, 15000, 22000, 18000, 25000],
+                backgroundColor: "rgba(54, 162, 235, 0.5)",
+                borderColor: "rgba(54, 162, 235, 1)",
+                borderWidth: 1,
+              },
+              {
+                label: "Net Revenue",
+                data: [10000, 16000, 12500, 19000, 15000, 21000],
+                backgroundColor: "rgba(75, 192, 192, 0.5)",
+                borderColor: "rgba(75, 192, 192, 1)",
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "Revenue",
+                },
+              },
+            },
+          },
+        });
+      </script>
+    </div>
+  </body>
+</html>

@@ -188,6 +188,40 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 # Email verification
 EMAIL_VERIFICATION_REQUIRED = True
 
+# Caching configuration
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "xcounter-cache",
+        "TIMEOUT": 300,  # 5 minutes default timeout
+    },
+    "file": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": os.path.join(BASE_DIR, "cache"),
+        "TIMEOUT": 3600,  # 1 hour timeout for file cache
+        "OPTIONS": {
+            "MAX_ENTRIES": 1000,
+            "CULL_FREQUENCY": 3,  # Purge 1/3 of entries when MAX_ENTRIES is reached
+        },
+    },
+}
+
+# Cache key prefix to avoid clashes with other applications
+CACHE_MIDDLEWARE_KEY_PREFIX = "xcounter"
+
+# Add cache middleware if needed
+if os.environ.get("ENABLE_CACHE_MIDDLEWARE", "False") == "True":
+    # Add cache middleware to MIDDLEWARE (after existing CommonMiddleware)
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index("django.middleware.common.CommonMiddleware") + 1,
+        "django.middleware.cache.UpdateCacheMiddleware",
+    )
+    MIDDLEWARE.append("django.middleware.cache.FetchFromCacheMiddleware")
+
+    # Cache middleware settings
+    CACHE_MIDDLEWARE_ALIAS = "default"
+    CACHE_MIDDLEWARE_SECONDS = 600  # 10 minutes
+
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
     "users.backends.EmailBackend",

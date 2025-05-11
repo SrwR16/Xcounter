@@ -1,40 +1,39 @@
 #!/bin/bash
 
-echo "XCounter System Features Demo"
-echo "============================"
-echo
+# Demo script for running all features
 
-echo "1. Management Commands"
-echo "---------------------"
+echo -e "\n===== Movie Counter Feature Demo =====\n"
 
-echo "Cleaning up expired shows (dry run):"
-python manage.py cleanup_expired_shows --days=30 --dry-run
-
-echo
-echo "Generating monthly reports:"
+# Create reports directory if it doesn't exist
 mkdir -p reports
-python manage.py generate_monthly_report --month=$(date +%m) --year=$(date +%Y) --format=text --output-dir=reports
 
-echo
-echo "Creating system backup:"
+# Clean up expired shows
+echo -e "\n1. Cleaning up expired shows:"
+echo "-------------------------"
+venv/bin/python manage.py cleanup_expired_shows --days=30 --dry-run
+
+# Generate monthly report with visualizations
+echo -e "\n2. Generating monthly reports with charts:"
+echo "-------------------------"
+venv/bin/python manage.py generate_monthly_report --include-charts --output-dir=reports
+
+# Create system backup
+echo -e "\n3. Creating system backup:"
+echo "-------------------------"
 mkdir -p backups
-python manage.py create_system_backup --backup-dir=backups
+venv/bin/python manage.py create_system_backup --backup-dir=backups
 
-echo
-echo "2. Automated Notifications"
-echo "------------------------"
+# Send automated notifications
+echo -e "\n4. Sending automated notifications:"
+echo "-------------------------"
+venv/bin/python manage.py send_automated_notifications --dry-run
 
-echo "Sending automated notifications (dry run):"
-python manage.py send_automated_notifications
+# Check the advanced visualizations
+echo -e "\n5. View advanced visualizations:"
+echo "-------------------------"
+echo "You can view the visualization demo at:"
+echo "file://$(pwd)/reports/visualization_demo.html"
+echo ""
+echo "Try opening this file in your browser to see the interactive charts!"
 
-echo
-echo "Testing notification features with Python script:"
-python test_missing_features.py --notifications
-
-echo
-echo "3. Testing all features"
-echo "---------------------"
-echo "To test all features, run: python test_missing_features.py"
-
-echo
-echo "Demo completed."
+echo -e "\nAll features successfully demonstrated!"

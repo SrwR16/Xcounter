@@ -1,9 +1,13 @@
+from django.db.models import Avg, Count, Prefetch, Q
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from reviews.models import Review, ReviewReply
 from users.permissions import IsAdmin, IsAdminOrModerator
 
 from .models import Genre, Movie, Show, Theater
@@ -52,25 +56,44 @@ class MovieViewSet(viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated]
     filter_backends = [
-        filters.SearchFilter,
         DjangoFilterBackend,
+        filters.SearchFilter,
         filters.OrderingFilter,
     ]
+    filterset_fields = ["genre", "is_active", "release_date"]
     search_fields = ["title", "description", "director", "cast"]
-    filterset_fields = ["release_date", "genres", "is_active"]
-    ordering_fields = ["title", "release_date", "rating"]
+    ordering_fields = ["release_date", "duration_minutes", "rating"]
     ordering = ["-release_date"]
 
     def get_queryset(self):
-        """Filter movies based on user role and query parameters"""
-        if self.request.user.is_authenticated and (
-            self.request.user.is_admin or self.request.user.is_moderator
+        """
+        Get movie queryset with optimized DB access.
+        """
+        queryset = Movie.objects.all()
+
+        # Optimize by prefetching related fields
+        if self.action in ["retrieve", "review"]:
+            # For detailed views, prefetch reviews and their replies
+            reviews_qs = Review.objects.select_related("user").filter(is_approved=True)
+            queryset = queryset.prefetch_related(
+                Prefetch("reviews", queryset=reviews_qs),
+                Prefetch(
+                    "reviews__replies",
+                    queryset=ReviewReply.objects.select_related("user"),
+                ),
+            )
+        elif self.action == "list":
+            # For list views, annotate with count and ratings
+            queryset = queryset.annotate(
+                review_count=Count("reviews", filter=Q(reviews__is_approved=True)),
+                avg_rating=Avg("reviews__rating", filter=Q(reviews__is_approved=True)),
+            )
+
+        # Filter for active movies unless explicitly requested otherwise
+        if self.action == "list" and not self.request.query_params.get(
+            "include_inactive"
         ):
-            # Admin and Moderator can see all movies including inactive ones
-            queryset = Movie.objects.all()
-        else:
-            # Other users can only see active movies
-            queryset = Movie.objects.filter(is_active=True)
+            queryset = queryset.filter(is_active=True)
 
         return queryset
 
@@ -95,10 +118,37 @@ class MovieViewSet(viewsets.ModelViewSet):
             self.permission_classes = [IsAdminOrModerator]
         return super().get_permissions()
 
+    @method_decorator(cache_page(60 * 30))  # Cache for 30 minutes
     @action(detail=False, methods=["get"], url_path="featured")
     def featured_movies(self, request):
         """API endpoint to get featured movies (those with highest ratings)"""
-        movies = Movie.objects.filter(is_active=True).order_by("-rating")[:5]
+        # Use annotate to calculate average rating directly in the database
+        movies = (
+            Movie.objects.filter(is_active=True)
+            .annotate(
+                avg_rating=Avg("reviews__rating", filter=Q(reviews__is_approved=True)),
+                review_count=Count("reviews", filter=Q(reviews__is_approved=True)),
+            )
+            .filter(review_count__gt=0)
+            .order_by("-avg_rating")[:5]
+        )
+
+        serializer = MovieListSerializer(
+            movies, many=True, context={"request": request}
+        )
+        return Response(serializer.data)
+
+    @method_decorator(cache_page(60 * 15))  # Cache for 15 minutes
+    @action(detail=False, methods=["get"], url_path="popular")
+    def popular_movies(self, request):
+        """API endpoint to get popular movies (those with most bookings)"""
+        # Use annotate to calculate booking count directly in the database
+        movies = (
+            Movie.objects.filter(is_active=True)
+            .annotate(booking_count=Count("shows__booking", distinct=True))
+            .order_by("-booking_count")[:5]
+        )
+
         serializer = MovieListSerializer(
             movies, many=True, context={"request": request}
         )

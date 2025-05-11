@@ -1,4 +1,5 @@
 import csv
+import json
 import os
 from datetime import datetime
 
@@ -8,6 +9,13 @@ from django.db.models import Count, Sum
 from django.utils import timezone
 
 from bookings.models import Booking, Ticket
+from dashboard.visualization import (
+    get_bookings_over_time_chart_data,
+    get_genre_distribution_chart_data,
+    get_monthly_revenue_chart_data,
+    get_movie_ratings_chart_data,
+    get_ticket_types_chart_data,
+)
 from movies.models import Movie, Show
 
 
@@ -40,12 +48,18 @@ class Command(BaseCommand):
             default=None,
             help="Directory to save reports (defaults to reports/ directory)",
         )
+        parser.add_argument(
+            "--include-charts",
+            action="store_true",
+            help="Include chart visualizations in the reports (JSON format)",
+        )
 
     def handle(self, *args, **options):
         month = options["month"]
         year = options["year"]
         output_format = options["format"]
         output_dir = options["output_dir"] or os.path.join(settings.BASE_DIR, "reports")
+        include_charts = options["include_charts"]
 
         # Ensure output directory exists
         os.makedirs(output_dir, exist_ok=True)
@@ -60,15 +74,27 @@ class Command(BaseCommand):
         self.stdout.write(f'Generating reports for {start_date.strftime("%B %Y")}')
 
         # Generate reports
-        self.generate_movie_report(start_date, end_date, output_format, output_dir)
-        self.generate_booking_report(start_date, end_date, output_format, output_dir)
-        self.generate_revenue_report(start_date, end_date, output_format, output_dir)
+        self.generate_movie_report(
+            start_date, end_date, output_format, output_dir, include_charts
+        )
+        self.generate_booking_report(
+            start_date, end_date, output_format, output_dir, include_charts
+        )
+        self.generate_revenue_report(
+            start_date, end_date, output_format, output_dir, include_charts
+        )
+
+        # Generate visualization charts if requested
+        if include_charts:
+            self.generate_visualization_charts(output_dir)
 
         self.stdout.write(
             self.style.SUCCESS(f"Reports generated successfully in {output_dir}")
         )
 
-    def generate_movie_report(self, start_date, end_date, output_format, output_dir):
+    def generate_movie_report(
+        self, start_date, end_date, output_format, output_dir, include_charts=False
+    ):
         """Generate report on movie performance"""
         self.stdout.write("Generating movie performance report...")
 
@@ -143,7 +169,22 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"Movie report saved to {filepath}"))
 
-    def generate_booking_report(self, start_date, end_date, output_format, output_dir):
+        # If charts are requested, generate a JSON file with chart data
+        if include_charts:
+            chart_data = get_movie_ratings_chart_data()
+            chart_filename = f'movie_ratings_chart_{start_date.strftime("%Y_%m")}.json'
+            chart_filepath = os.path.join(output_dir, chart_filename)
+
+            with open(chart_filepath, "w") as f:
+                json.dump(chart_data, f, indent=2)
+
+            self.stdout.write(
+                self.style.SUCCESS(f"Movie ratings chart saved to {chart_filepath}")
+            )
+
+    def generate_booking_report(
+        self, start_date, end_date, output_format, output_dir, include_charts=False
+    ):
         """Generate report on bookings"""
         self.stdout.write("Generating booking report...")
 
@@ -210,7 +251,22 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"Booking report saved to {filepath}"))
 
-    def generate_revenue_report(self, start_date, end_date, output_format, output_dir):
+        # If charts are requested, generate a JSON file with chart data
+        if include_charts:
+            chart_data = get_bookings_over_time_chart_data(days=30)
+            chart_filename = f'bookings_chart_{start_date.strftime("%Y_%m")}.json'
+            chart_filepath = os.path.join(output_dir, chart_filename)
+
+            with open(chart_filepath, "w") as f:
+                json.dump(chart_data, f, indent=2)
+
+            self.stdout.write(
+                self.style.SUCCESS(f"Bookings chart saved to {chart_filepath}")
+            )
+
+    def generate_revenue_report(
+        self, start_date, end_date, output_format, output_dir, include_charts=False
+    ):
         """Generate comprehensive revenue report"""
         self.stdout.write("Generating revenue report...")
 
@@ -302,3 +358,44 @@ class Command(BaseCommand):
                     )
 
         self.stdout.write(self.style.SUCCESS(f"Revenue report saved to {filepath}"))
+
+        # If charts are requested, generate a JSON file with chart data
+        if include_charts:
+            chart_data = get_monthly_revenue_chart_data(months=12)
+            chart_filename = f'revenue_chart_{start_date.strftime("%Y_%m")}.json'
+            chart_filepath = os.path.join(output_dir, chart_filename)
+
+            with open(chart_filepath, "w") as f:
+                json.dump(chart_data, f, indent=2)
+
+            self.stdout.write(
+                self.style.SUCCESS(f"Revenue chart saved to {chart_filepath}")
+            )
+
+    def generate_visualization_charts(self, output_dir):
+        """Generate additional visualization charts"""
+        self.stdout.write("Generating additional visualization charts...")
+
+        # Genre distribution chart
+        genre_chart_data = get_genre_distribution_chart_data()
+        genre_chart_filepath = os.path.join(output_dir, "genre_distribution_chart.json")
+
+        with open(genre_chart_filepath, "w") as f:
+            json.dump(genre_chart_data, f, indent=2)
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Genre distribution chart saved to {genre_chart_filepath}"
+            )
+        )
+
+        # Ticket types chart
+        ticket_chart_data = get_ticket_types_chart_data()
+        ticket_chart_filepath = os.path.join(output_dir, "ticket_types_chart.json")
+
+        with open(ticket_chart_filepath, "w") as f:
+            json.dump(ticket_chart_data, f, indent=2)
+
+        self.stdout.write(
+            self.style.SUCCESS(f"Ticket types chart saved to {ticket_chart_filepath}")
+        )
