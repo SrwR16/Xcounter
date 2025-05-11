@@ -1,0 +1,10 @@
+DEBUG=True
+SECRET_KEY=django-insecure-!u2%l=tcn3sf=qek0^ky7&2odr*l+%asx_o$1xl^6ouqd+0vje
+
+# Email settings
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=icount.bd@gmail.com
+EMAIL_HOST_PASSWORD=
+DEFAULT_FROM_EMAIL=icount.bd@gmail.com
