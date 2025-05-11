@@ -1,96 +1,88 @@
 #!/usr/bin/env python
 import os
+import sys
 
 import django
 
 # Set up Django environment
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "xcounter.settings")
 django.setup()
 
-# Import necessary modules
+# Import Django components
 from django.conf import settings
 from django.core.mail import send_mail
 
+from users.models import CustomUser, TwoFactorCode
 
-def test_email_sending():
-    subject = "Test Email from XCounter"
-    message = "This is a test email from the XCounter application."
-    html_message = """
-    <html>
-    <head>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-            }
-            .container {
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-            }
-            .header {
-                background-color: #4a69bd;
-                color: white;
-                padding: 10px 20px;
-                text-align: center;
-                border-radius: 5px 5px 0 0;
-            }
-            .content {
-                padding: 20px;
-            }
-            .footer {
-                text-align: center;
-                font-size: 12px;
-                color: #777;
-                margin-top: 20px;
-                padding-top: 10px;
-                border-top: 1px solid #ddd;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>XCounter</h1>
-            </div>
-            <div class="content">
-                <h2>Test Email</h2>
-                <p>This is a test email from the XCounter application.</p>
-                <p>If you're receiving this email, it means that your email configuration is working correctly!</p>
-            </div>
-            <div class="footer">
-                <p>&copy; 2025 XCounter. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    from_email = settings.DEFAULT_FROM_EMAIL
-    recipient_list = ["icount.bd@gmail.com"]  # Replace with the recipient email
 
-    print(f"Sending email from: {from_email}")
-    print(f"Sending email to: {recipient_list}")
-
+def test_email():
     try:
-        result = send_mail(
-            subject,
-            message,
-            from_email,
-            recipient_list,
-            html_message=html_message,
+        print("Email settings:")
+        print(f"EMAIL_BACKEND: {settings.EMAIL_BACKEND}")
+        print(f"EMAIL_HOST: {settings.EMAIL_HOST}")
+        print(f"EMAIL_PORT: {settings.EMAIL_PORT}")
+        print(f"EMAIL_USE_TLS: {settings.EMAIL_USE_TLS}")
+        print(f"EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
+        print(f"DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
+
+        # Check if EMAIL_HOST_PASSWORD is set
+        if not settings.EMAIL_HOST_PASSWORD:
+            print("WARNING: EMAIL_HOST_PASSWORD is not set!")
+        else:
+            print("EMAIL_HOST_PASSWORD is set (value hidden)")
+
+        print("\nAttempting to send test email...")
+        send_mail(
+            "Test Email from XCounter",
+            "This is a test email to verify the email configuration is working properly.",
+            settings.DEFAULT_FROM_EMAIL,
+            ["icount.bd@gmail.com"],
             fail_silently=False,
         )
-        print(f"Email sent successfully! Result: {result}")
-        return True
+        print("Email sent successfully!")
     except Exception as e:
-        print(f"Failed to send email: {e}")
-        return False
+        print(f"Error sending email: {type(e).__name__}: {str(e)}")
+
+
+def test_2fa_code():
+    try:
+        print("\nAttempting to generate and send 2FA code...")
+        # Get user with email icount.bd@gmail.com
+        user = CustomUser.objects.get(email="icount.bd@gmail.com")
+        print(f"Found user: {user.email} (ID: {user.id})")
+
+        # Generate 2FA code
+        code_obj = TwoFactorCode.generate_code(user)
+        print(f"Generated code: {code_obj.code}")
+
+        # Send email with code
+        subject = "Your XCounter Two-Factor Authentication Test Code"
+        message = f"""Hello {user.email},
+
+Your two-factor authentication code is: {code_obj.code}
+
+This code will expire in 10 minutes.
+
+If you did not request this code, please ignore this email.
+
+Regards,
+The XCounter Team"""
+
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+        print("2FA code email sent successfully!")
+    except CustomUser.DoesNotExist:
+        print("User with email icount.bd@gmail.com not found")
+    except Exception as e:
+        print(f"Error: {type(e).__name__}: {str(e)}")
 
 
 if __name__ == "__main__":
-    print("Testing email sending...")
-    result = test_email_sending()
-    print(f"Email test {'succeeded' if result else 'failed'}.")
+    test_email()
+    test_2fa_code()

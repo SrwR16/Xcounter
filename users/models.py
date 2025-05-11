@@ -91,3 +91,47 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.email}'s profile"
+
+
+class TwoFactorCode(models.Model):
+    """
+    Model to store two-factor authentication codes for admin and moderator users.
+    """
+
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="two_factor_codes"
+    )
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"2FA Code for {self.user.email}"
+
+    @classmethod
+    def generate_code(cls, user):
+        """Generate a new 2FA code for a user and invalidate previous codes."""
+        # Invalidate previous codes
+        cls.objects.filter(user=user, is_used=False).update(is_used=True)
+
+        # Generate a random 6-digit code
+        import random
+
+        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+
+        # Set expiration time (10 minutes from now)
+        import datetime
+
+        from django.utils import timezone
+
+        expires_at = timezone.now() + datetime.timedelta(minutes=10)
+
+        # Create and return the code
+        return cls.objects.create(user=user, code=code, expires_at=expires_at)
+
+    def is_valid(self):
+        """Check if the code is valid (not used and not expired)."""
+        from django.utils import timezone
+
+        return not self.is_used and self.expires_at > timezone.now()
