@@ -1,21 +1,23 @@
 import logging
-from datetime import timedelta
-
-from django.db.models import Avg, Count, Sum
-from django.http import HttpResponse
-from django.utils import timezone
-from django.views.generic import TemplateView
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
+import os
+from datetime import datetime, timedelta
 
 from bookings.models import Booking, Ticket
 from coupons.models import Coupon
+from django.conf import settings
+from django.db.models import Avg, Count, Sum
+from django.http import FileResponse, HttpResponse
+from django.utils import timezone
+from django.views.generic import TemplateView
 from employees.models import EmployeeProfile, PerformanceReview
 from movies.models import Movie, Show, Theater
+from rest_framework import status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from users.models import CustomUser
+from users.permissions import IsAdminOrModerator
 
 from .models import (
     DashboardLayout,
@@ -24,7 +26,7 @@ from .models import (
     MetricValue,
     ReportTemplate,
 )
-from .report_generators import generate_report_pdf
+from .report_generators import generate_pdf_report, generate_report_pdf
 from .serializers import (
     DashboardLayoutSerializer,
     DashboardMetricsSerializer,
@@ -873,3 +875,118 @@ class EmployeePerformanceDashboardView(TemplateView):
         # Add any context variables needed by the template
         context["title"] = "Employee Performance Dashboard"
         return context
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdminOrModerator])
+def generate_report_api(request):
+    """
+    API endpoint to generate a custom report based on the provided configuration.
+
+    Request body should contain:
+    {
+        "report_type": "sales|movies|employees",
+        "title": "Custom report title",
+        "start_date": "YYYY-MM-DD",
+        "end_date": "YYYY-MM-DD",
+        "include_charts": true,
+        "sections": ["summary", "details", "recommendations"]
+    }
+    """
+    try:
+        # Extract parameters from request
+        report_type = request.data.get("report_type", "sales")
+        title = request.data.get("title", f"{report_type.title()} Report")
+        start_date = request.data.get("start_date")
+        end_date = request.data.get("end_date")
+        include_charts = request.data.get("include_charts", True)
+        sections = request.data.get("sections", ["summary", "details"])
+
+        # Validate parameters
+        if report_type not in ["sales", "movies", "employees"]:
+            return Response(
+                {
+                    "error": "Invalid report type. Must be one of: sales, movies, employees"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Generate a temporary file path for the report
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{report_type}_report_{timestamp}.pdf"
+
+        # Create reports directory if it doesn't exist
+        reports_dir = os.path.join(settings.MEDIA_ROOT, "reports")
+        os.makedirs(reports_dir, exist_ok=True)
+
+        # Full path for the report file
+        report_path = os.path.join(reports_dir, filename)
+
+        # Generate the report
+        report_data = {
+            "title": title,
+            "type": report_type,
+            "start_date": start_date,
+            "end_date": end_date,
+            "include_charts": include_charts,
+            "sections": sections,
+            "user": request.user.username,
+            "generated_at": datetime.now().isoformat(),
+        }
+
+        # Generate PDF report
+        generate_pdf_report(report_data, report_path)
+
+        # Return the report information
+        return Response(
+            {
+                "success": True,
+                "message": "Report generated successfully",
+                "report": {
+                    "filename": filename,
+                    "url": f"/media/reports/{filename}",
+                    "type": report_type,
+                    "generated_at": datetime.now().isoformat(),
+                },
+            }
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to generate report: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdminOrModerator])
+def download_generated_report(request, filename):
+    """
+    Download a previously generated report file.
+    """
+    try:
+        # Construct the file path
+        report_path = os.path.join(settings.MEDIA_ROOT, "reports", filename)
+
+        # Check if the file exists
+        if not os.path.exists(report_path):
+            return Response(
+                {"error": "Report not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if the filename has valid extension (.pdf)
+        if not filename.lower().endswith(".pdf"):
+            return Response(
+                {"error": "Invalid report file"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Return the file as attachment
+        return FileResponse(
+            open(report_path, "rb"), as_attachment=True, filename=filename
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to download report: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

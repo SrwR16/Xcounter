@@ -1,27 +1,24 @@
-import json
 import logging
 import os
 from datetime import datetime, timedelta
 
+from bookings.models import Booking, Ticket
 from django.conf import settings
 from django.db.models import Avg, Sum
 from django.utils import timezone
+from employees.models import EmployeeProfile, PerformanceReview, SalaryHistory
+from movies.models import Movie, Show
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
-    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
 )
-
-from bookings.models import Booking, Ticket
-from employees.models import EmployeeProfile, PerformanceReview, SalaryHistory
-from movies.models import Movie, Show
 
 logger = logging.getLogger(__name__)
 
@@ -756,94 +753,148 @@ def _generate_performance_report(filepath, parameters):
 
 def _generate_custom_report(filepath, template_data, parameters):
     """Generate a custom report PDF based on template data."""
-    # Parse template data
-    try:
-        if isinstance(template_data, str):
-            template_data = json.loads(template_data)
+    # Create the PDF document
+    doc = SimpleDocTemplate(
+        filepath,
+        pagesize=letter,
+        rightMargin=72,
+        leftMargin=72,
+        topMargin=72,
+        bottomMargin=72,
+    )
 
-        title = template_data.get("title", "Custom Report")
-        sections = template_data.get("sections", [])
+    # Define styles
+    styles = getSampleStyleSheet()
+    title_style = styles["Title"]
+    heading_style = styles["Heading1"]
+    subheading_style = styles["Heading2"]
+    normal_style = styles["Normal"]
 
-        # Create the PDF document
-        doc = SimpleDocTemplate(
-            filepath,
-            pagesize=letter,
-            rightMargin=72,
-            leftMargin=72,
-            topMargin=72,
-            bottomMargin=72,
-        )
+    # Build the document
+    elements = []
 
-        # Define styles
-        styles = getSampleStyleSheet()
-        title_style = styles["Title"]
-        heading_style = styles["Heading1"]
-        subheading_style = styles["Heading2"]
-        normal_style = styles["Normal"]
+    # Title
+    title = template_data.get("title", "Custom Report")
+    elements.append(Paragraph(title, title_style))
+    elements.append(Spacer(1, 0.25 * inch))
 
-        # Build the document
-        elements = []
+    # Date generated
+    date_text = f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+    elements.append(Paragraph(date_text, normal_style))
+    elements.append(Spacer(1, 0.25 * inch))
 
-        # Title
-        elements.append(Paragraph(title, title_style))
+    # Sections
+    sections = template_data.get("sections", [])
+    for section in sections:
+        section_title = section.get("title", "Section")
+        elements.append(Paragraph(section_title, heading_style))
+        elements.append(Spacer(1, 0.15 * inch))
+
+        section_content = section.get("content", "")
+        elements.append(Paragraph(section_content, normal_style))
         elements.append(Spacer(1, 0.25 * inch))
 
-        # Add date if specified
-        if parameters.get("show_date", True):
-            date_text = f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            elements.append(Paragraph(date_text, normal_style))
+        # Add table if present
+        table_data = section.get("table")
+        if table_data and isinstance(table_data, list) and len(table_data) > 0:
+            table = Table(table_data)
+            table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ]
+                )
+            )
+            elements.append(table)
             elements.append(Spacer(1, 0.25 * inch))
 
-        # Process each section
-        for section in sections:
-            section_type = section.get("type")
-            section_title = section.get("title", "")
+    # Build the PDF
+    doc.build(elements)
 
-            if section_title:
-                elements.append(Paragraph(section_title, heading_style))
-                elements.append(Spacer(1, 0.15 * inch))
 
-            # Text section
-            if section_type == "text":
-                content = section.get("content", "")
-                elements.append(Paragraph(content, normal_style))
-                elements.append(Spacer(1, 0.25 * inch))
+def generate_pdf_report(report_data, output_path):
+    """
+    Generate a PDF report based on the report data.
 
-            # Table section
-            elif section_type == "table":
-                headers = section.get("headers", [])
-                data = section.get("data", [])
+    Args:
+        report_data: Dictionary containing report configuration
+            {
+                'title': 'Report Title',
+                'type': 'sales|movies|employees',
+                'start_date': '2023-01-01',  # Optional
+                'end_date': '2023-12-31',    # Optional
+                'include_charts': True,      # Optional
+                'sections': ['summary', 'details', etc.], # Optional
+                'user': 'username',           # Optional
+                'generated_at': '2023-05-15T12:34:56',  # Optional
+            }
+        output_path: Path where to save the PDF file
 
-                if headers and data:
-                    table_data = [headers]
-                    table_data.extend(data)
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        report_type = report_data.get("type", "sales").lower()
 
-                    col_widths = [1.5 * inch] * len(headers)
-                    table = Table(table_data, colWidths=col_widths)
+        # Convert dates if provided
+        parameters = {}
+        start_date = report_data.get("start_date")
+        end_date = report_data.get("end_date")
 
-                    table.setStyle(
-                        TableStyle(
-                            [
-                                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                                ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                            ]
-                        )
-                    )
+        if start_date:
+            parameters["start_date"] = start_date
 
-                    elements.append(table)
-                    elements.append(Spacer(1, 0.25 * inch))
+        if end_date:
+            parameters["end_date"] = end_date
 
-            # Add page break if specified
-            if section.get("page_break", False):
-                elements.append(PageBreak())
+        # Call the appropriate report generation function
+        if report_type == "sales":
+            _generate_sales_report(output_path, parameters)
+        elif report_type == "employees":
+            _generate_employee_report(output_path, parameters)
+        elif report_type == "movies":
+            _generate_movies_report(output_path, parameters)
+        else:
+            # For custom reports, build a template_data structure
+            title = report_data.get("title", f"{report_type.title()} Report")
+            sections = report_data.get("sections", ["summary"])
 
-        # Build the PDF
-        doc.build(elements)
+            template_data = {"title": title, "sections": []}
+
+            # Add sections based on the requested sections
+            if "summary" in sections:
+                template_data["sections"].append(
+                    {
+                        "title": "Summary",
+                        "content": f'This is a {report_type} report generated on {datetime.now().strftime("%Y-%m-%d")}.',
+                    }
+                )
+
+            if "details" in sections:
+                template_data["sections"].append(
+                    {
+                        "title": "Details",
+                        "content": "Detailed information for this report type is not available.",
+                    }
+                )
+
+            if "recommendations" in sections:
+                template_data["sections"].append(
+                    {
+                        "title": "Recommendations",
+                        "content": "Based on the data, we recommend the following actions...",
+                    }
+                )
+
+            _generate_custom_report(output_path, template_data, parameters)
+
+        return True
 
     except Exception as e:
-        logger.error(f"Error generating custom report: {str(e)}")
-        raise ValueError(f"Error generating custom report: {str(e)}")
+        logger.error(f"Error generating PDF report: {str(e)}")
+        return False
