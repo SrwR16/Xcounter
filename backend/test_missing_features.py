@@ -207,7 +207,7 @@ def test_api_function(function_name, test_results):
                 False,
                 "Function does not have a docstring",
             )
-    else:
+        else:
         test_results.add_result(
             feature_name,
             "Function exists",
