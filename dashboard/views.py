@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.db.models import Avg, Count, Sum
 from django.http import HttpResponse
 from django.utils import timezone
+from django.views.generic import TemplateView
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -857,3 +858,18 @@ class MetricCalculator:
             string_value=string_value,
             json_value=json_value,
         )
+
+
+class EmployeePerformanceDashboardView(TemplateView):
+    """
+    View to render the employee performance dashboard with advanced visualizations.
+    Renders a template with Chart.js to display real-time performance data.
+    """
+
+    template_name = "employee_performance_dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add any context variables needed by the template
+        context["title"] = "Employee Performance Dashboard"
+        return context

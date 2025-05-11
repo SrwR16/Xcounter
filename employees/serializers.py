@@ -8,6 +8,7 @@ from .models import (
     Department,
     EmployeeProfile,
     Leave,
+    PerformanceMetric,
     PerformanceReview,
     Position,
     SalaryHistory,
@@ -328,3 +329,47 @@ class EmployeeStatsSerializer(serializers.Serializer):
     performance_stats = serializers.DictField()
     leave_stats = serializers.DictField()
     assignment_stats = serializers.DictField()
+
+
+class PerformanceMetricSerializer(serializers.ModelSerializer):
+    employee_email = serializers.ReadOnlyField(source="employee.user.email")
+    recorder_email = serializers.ReadOnlyField(source="recorded_by.email")
+
+    class Meta:
+        model = PerformanceMetric
+        fields = [
+            "id",
+            "employee",
+            "employee_email",
+            "metric_date",
+            "bookings_processed",
+            "revenue_generated",
+            "customer_satisfaction",
+            "response_time_minutes",
+            "task_completion_rate",
+            "notes",
+            "recorded_by",
+            "recorder_email",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
+
+
+class PerformanceMetricCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PerformanceMetric
+        fields = [
+            "employee",
+            "metric_date",
+            "bookings_processed",
+            "revenue_generated",
+            "customer_satisfaction",
+            "response_time_minutes",
+            "task_completion_rate",
+            "notes",
+        ]
+
+    def create(self, validated_data):
+        validated_data["recorded_by"] = self.context["request"].user
+        return super().create(validated_data)

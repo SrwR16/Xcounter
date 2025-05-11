@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -260,3 +261,55 @@ class Leave(models.Model):
         """Calculate the number of days requested for leave."""
         delta = self.end_date - self.start_date
         return delta.days + 1  # Include both start and end days
+
+
+class PerformanceMetric(models.Model):
+    """Track performance metrics for employees"""
+
+    employee = models.ForeignKey(
+        EmployeeProfile, on_delete=models.CASCADE, related_name="performance_metrics"
+    )
+    metric_date = models.DateField()
+
+    # Quantitative metrics
+    bookings_processed = models.PositiveIntegerField(default=0)
+    revenue_generated = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    customer_satisfaction = models.DecimalField(
+        max_digits=3,
+        decimal_places=2,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        default=5.00,
+    )
+    response_time_minutes = models.PositiveIntegerField(
+        default=0
+    )  # Average response time
+    task_completion_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,  # Percentage (0-100)
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        default=100.00,
+    )
+
+    # Notes
+    notes = models.TextField(blank=True)
+
+    # Record keeping
+    recorded_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="recorded_metrics",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.employee.user.email} - {self.metric_date} metrics"
+
+    class Meta:
+        ordering = ["-metric_date"]
+        indexes = [
+            models.Index(fields=["employee", "-metric_date"]),
+            models.Index(fields=["metric_date"]),
+        ]
+        unique_together = ["employee", "metric_date"]

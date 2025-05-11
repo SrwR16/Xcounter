@@ -1,22 +1,21 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .charts import chart_views
 from .views import (
-    AdminDashboardView,
+    ChartDataView,
     DashboardLayoutViewSet,
     DashboardMetricsView,
+    EmployeePerformanceDashboardView,
     EmployeeReportView,
     GeneratedReportViewSet,
     GenerateReportView,
     MetricValueViewSet,
     MetricViewSet,
-    ModeratorDashboardView,
-    MovieReportView,
-    ReportListView,
     ReportTemplateViewSet,
     RoleBasedDashboardView,
     SalesReportView,
+    download_generated_report,
+    generate_report_api,
 )
 
 # Create a router for ViewSets
@@ -34,27 +33,27 @@ router.register(
 chart_urlpatterns = [
     path(
         "charts/movie-ratings/",
-        chart_views.MovieRatingsChartView.as_view(),
+        ChartDataView.MovieRatingsChartView.as_view(),
         name="movie-ratings-chart",
     ),
     path(
         "charts/bookings-over-time/",
-        chart_views.BookingsOverTimeChartView.as_view(),
+        ChartDataView.BookingsOverTimeChartView.as_view(),
         name="bookings-over-time-chart",
     ),
     path(
         "charts/genre-distribution/",
-        chart_views.GenreDistributionChartView.as_view(),
+        ChartDataView.GenreDistributionChartView.as_view(),
         name="genre-distribution-chart",
     ),
     path(
         "charts/ticket-types/",
-        chart_views.TicketTypesChartView.as_view(),
+        ChartDataView.TicketTypesChartView.as_view(),
         name="ticket-types-chart",
     ),
     path(
         "charts/monthly-revenue/",
-        chart_views.MonthlyRevenueChartView.as_view(),
+        ChartDataView.MonthlyRevenueChartView.as_view(),
         name="monthly-revenue-chart",
     ),
 ]
@@ -70,18 +69,18 @@ urlpatterns = [
     path("generate-report/", GenerateReportView.as_view(), name="generate-report"),
     path(
         "admin-dashboard/",
-        AdminDashboardView.as_view(),
+        ChartDataView.AdminDashboardView.as_view(),
         name="admin-dashboard",
     ),
     path(
         "moderator-dashboard/",
-        ModeratorDashboardView.as_view(),
+        ChartDataView.ModeratorDashboardView.as_view(),
         name="moderator-dashboard",
     ),
-    path("reports/", ReportListView.as_view(), name="report-list"),
+    path("reports/", ChartDataView.ReportListView.as_view(), name="report-list"),
     path(
         "reports/movies/",
-        MovieReportView.as_view(),
+        ChartDataView.MovieReportView.as_view(),
         name="movie-report",
     ),
     path(
@@ -93,5 +92,16 @@ urlpatterns = [
         "reports/employees/",
         EmployeeReportView.as_view(),
         name="employee-report",
+    ),
+    path(
+        "reports/download/<uuid:report_id>/",
+        download_generated_report,
+        name="download-report",
+    ),
+    path("reports/generate/", generate_report_api, name="generate-report-api"),
+    path(
+        "employee-performance/",
+        EmployeePerformanceDashboardView.as_view(),
+        name="employee-performance-dashboard",
     ),
 ] + chart_urlpatterns

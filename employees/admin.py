@@ -5,6 +5,7 @@ from .models import (
     Department,
     EmployeeProfile,
     Leave,
+    PerformanceMetric,
     PerformanceReview,
     Position,
     SalaryHistory,
@@ -175,3 +176,45 @@ class LeaveAdmin(admin.ModelAdmin):
         queryset.update(status="REJECTED", rejected_reason="Rejected via admin action")
 
     reject_leave.short_description = "Reject selected leave requests"
+
+
+@admin.register(PerformanceMetric)
+class PerformanceMetricAdmin(admin.ModelAdmin):
+    list_display = (
+        "employee",
+        "metric_date",
+        "bookings_processed",
+        "revenue_generated",
+        "customer_satisfaction",
+        "task_completion_rate",
+    )
+    list_filter = ("metric_date", "customer_satisfaction")
+    search_fields = ("employee__user__email", "notes")
+    readonly_fields = ("created_at", "updated_at")
+
+    fieldsets = (
+        (
+            "Employee Information",
+            {"fields": ("employee", "metric_date", "recorded_by")},
+        ),
+        (
+            "Performance Metrics",
+            {
+                "fields": (
+                    "bookings_processed",
+                    "revenue_generated",
+                    "customer_satisfaction",
+                    "response_time_minutes",
+                    "task_completion_rate",
+                )
+            },
+        ),
+        (
+            "Additional Information",
+            {"fields": ("notes",)},
+        ),
+        (
+            "Timestamps",
+            {"fields": ("created_at", "updated_at")},
+        ),
+    )

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      {% block title %}
+        Movie Counter
+      {% endblock %}
+    </title>
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/styles.css" />
+    {% block extra_css %}
+    {% endblock %}
+  </head>
+  <body class="{% if user.is_authenticated %}logged-in{% endif %}">
+    <header>
+      <nav>
+        <div class="logo">
+          <h1>Movie Counter</h1>
+        </div>
+        <div class="menu">
+          <ul>
+            <li>
+              <a href="/">Home</a>
+            </li>
+            <li>
+              <a href="/movies/">Movies</a>
+            </li>
+            {% if user.is_authenticated %}
+              <li>
+                <a href="/bookings/">My Bookings</a>
+              </li>
+              {% if user.is_admin or user.is_moderator %}
+                <li>
+                  <a href="/dashboard/">Dashboard</a>
+                </li>
+                <li>
+                  <a href="/dashboard/employee-performance/">Employee Performance</a>
+                </li>
+              {% endif %}
+              <li>
+                <a href="/profile/">Profile</a>
+              </li>
+              <li>
+                <a href="/logout/">Logout</a>
+              </li>
+            {% else %}
+              <li>
+                <a href="/login/">Login</a>
+              </li>
+              <li>
+                <a href="/register/">Register</a>
+              </li>
+            {% endif %}
+          </ul>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      {% block content %}
+      {% endblock %}
+    </main>
+
+    <footer>
+      <p>
+        &copy; {% now 'Y' %}Movie Counter. All rights reserved.
+      </p>
+    </footer>
+
+    <!-- Include WebSocket notification script for logged-in users -->
+    {% if user.is_authenticated %}
+      <script src="{{ STATIC_URL }}js/realtime-notifications.js"></script>
+    {% endif %}
+
+    {% block extra_js %}
+    {% endblock %}
+  </body>
+</html>

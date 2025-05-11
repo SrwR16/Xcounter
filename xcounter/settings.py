@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "corsheaders",
     "django_filters",
+    "channels",  # Django Channels for WebSockets
     # Local apps
     "users.apps.UsersConfig",
     "movies.apps.MoviesConfig",
@@ -91,6 +92,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "xcounter.wsgi.application"
+ASGI_APPLICATION = "xcounter.asgi.application"
 
 
 # Database
@@ -227,3 +229,13 @@ AUTHENTICATION_BACKENDS = [
     "users.backends.EmailBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
+
+# Channel layers for WebSocket communication
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}

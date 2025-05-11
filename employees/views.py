@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db.models import Avg, Max, Min, Sum
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
@@ -11,6 +13,7 @@ from .models import (
     Department,
     EmployeeProfile,
     Leave,
+    PerformanceMetric,
     PerformanceReview,
     Position,
     SalaryHistory,
@@ -25,6 +28,8 @@ from .serializers import (
     EmployeeStatsSerializer,
     LeaveApprovalSerializer,
     LeaveSerializer,
+    PerformanceMetricCreateSerializer,
+    PerformanceMetricSerializer,
     PerformanceReviewSerializer,
     PositionSerializer,
     SalaryHistorySerializer,
@@ -441,3 +446,186 @@ class EmployeeStatsViewSet(viewsets.ViewSet):
 
         serializer.is_valid()  # We're constructing this manually, so it's always valid
         return Response(serializer.data)
+
+
+class PerformanceMetricViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for employee performance metrics.
+    """
+
+    queryset = PerformanceMetric.objects.all()
+    permission_classes = [IsAdminOrManager]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["employee", "metric_date"]
+    search_fields = ["employee__user__email", "notes"]
+    ordering_fields = ["metric_date", "customer_satisfaction", "revenue_generated"]
+    ordering = ["-metric_date"]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return PerformanceMetricCreateSerializer
+        return PerformanceMetricSerializer
+
+    @action(detail=False, methods=["get"])
+    def by_employee(self, request):
+        """Get performance metrics for a specific employee."""
+        employee_id = request.query_params.get("employee_id")
+        if not employee_id:
+            return Response(
+                {"error": "Employee ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        queryset = self.get_queryset().filter(employee_id=employee_id)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def trends(self, request):
+        """Get performance trends over time for visualization."""
+        employee_id = request.query_params.get("employee_id")
+        metric = request.query_params.get("metric", "customer_satisfaction")
+        days = int(request.query_params.get("days", 30))
+
+        # Validate metric
+        valid_metrics = [
+            "bookings_processed",
+            "revenue_generated",
+            "customer_satisfaction",
+            "response_time_minutes",
+            "task_completion_rate",
+        ]
+
+        if metric not in valid_metrics:
+            return Response(
+                {"error": f"Invalid metric. Choose from {valid_metrics}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Generate date range
+        end_date = timezone.now().date()
+        start_date = end_date - timezone.timedelta(days=days)
+
+        # Build queryset
+        queryset = PerformanceMetric.objects.filter(
+            metric_date__gte=start_date, metric_date__lte=end_date
+        )
+
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+
+        # Group by date and calculate averages
+        data = []
+        dates = []
+        current_date = start_date
+        while current_date <= end_date:
+            dates.append(current_date)
+            current_date += timezone.timedelta(days=1)
+
+        for date in dates:
+            day_metrics = queryset.filter(metric_date=date)
+            if day_metrics.exists():
+                if metric == "revenue_generated":
+                    value = (
+                        day_metrics.aggregate(Sum(metric))["revenue_generated__sum"]
+                        or 0
+                    )
+                else:
+                    value = day_metrics.aggregate(Avg(metric))[f"{metric}__avg"] or 0
+
+                # Convert to float for serialization
+                value = float(value) if isinstance(value, Decimal) else value
+
+                data.append(
+                    {
+                        "date": date.isoformat(),
+                        "value": value,
+                        "count": day_metrics.count(),
+                    }
+                )
+            else:
+                data.append({"date": date.isoformat(), "value": 0, "count": 0})
+
+        return Response(
+            {
+                "metric": metric,
+                "employee_id": employee_id,
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "data": data,
+            }
+        )
+
+    @action(detail=False, methods=["get"])
+    def comparison(self, request):
+        """Compare metrics across employees for visualization."""
+        metric = request.query_params.get("metric", "customer_satisfaction")
+        days = int(request.query_params.get("days", 30))
+        limit = int(request.query_params.get("limit", 10))
+
+        # Validate metric
+        valid_metrics = [
+            "bookings_processed",
+            "revenue_generated",
+            "customer_satisfaction",
+            "response_time_minutes",
+            "task_completion_rate",
+        ]
+
+        if metric not in valid_metrics:
+            return Response(
+                {"error": f"Invalid metric. Choose from {valid_metrics}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Generate date range
+        end_date = timezone.now().date()
+        start_date = end_date - timezone.timedelta(days=days)
+
+        # Get top performers based on the metric
+        top_employees = (
+            EmployeeProfile.objects.filter(
+                performance_metrics__metric_date__gte=start_date,
+                performance_metrics__metric_date__lte=end_date,
+            )
+            .annotate(avg_value=Avg(f"performance_metrics__{metric}"))
+            .order_by(
+                "-avg_value" if metric != "response_time_minutes" else "avg_value"
+            )[:limit]
+        )
+
+        # Prepare comparison data
+        comparison_data = []
+        for employee in top_employees:
+            avg_value = employee.avg_value
+            metrics_count = employee.performance_metrics.filter(
+                metric_date__gte=start_date, metric_date__lte=end_date
+            ).count()
+
+            if avg_value is not None:
+                # Convert to float for serialization
+                avg_value = (
+                    float(avg_value) if isinstance(avg_value, Decimal) else avg_value
+                )
+
+                comparison_data.append(
+                    {
+                        "employee_id": employee.id,
+                        "employee_name": employee.user.get_full_name()
+                        or employee.user.email,
+                        "value": avg_value,
+                        "metrics_count": metrics_count,
+                    }
+                )
+
+        return Response(
+            {
+                "metric": metric,
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "data": comparison_data,
+            }
+        )

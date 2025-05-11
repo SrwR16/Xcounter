@@ -1,5 +1,7 @@
 import logging
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.core.mail import EmailMessage
 
 from .models import Notification, NotificationType, UserNotificationPreference
@@ -130,29 +132,32 @@ def send_notification_email(notification):
 def send_notification(
     user,
     notification_type,
-    subject,
-    content,
+    context_data,
     related_id=None,
-    data=None,
     send_email=True,
+    send_realtime=True,
 ):
     """
-    Create and send a notification to a user.
+    Create and send a notification to a user with context_data.
 
     Args:
         user: CustomUser instance
         notification_type: NotificationType choice
-        subject: str - notification subject
-        content: str - notification content (HTML)
+        context_data: dict with subject, message, and other template variables
         related_id: str - optional ID of related object
-        data: dict - additional data to store with notification
         send_email: bool - whether to send an email for this notification
+        send_realtime: bool - whether to send a real-time notification via WebSocket
 
     Returns:
         Notification instance or None if creation failed
     """
+    # Extract subject and content from context_data
+    subject = context_data.get("subject", "")
+    content = context_data.get("message", "")
+
+    # Create notification
     notification = create_notification(
-        user, notification_type, subject, content, related_id, data
+        user, notification_type, subject, content, related_id, context_data
     )
 
     if notification:
@@ -163,7 +168,51 @@ def send_notification(
             notification.status = Notification.Status.SENT
             notification.save()
 
+        # Send real-time notification if requested
+        if send_realtime:
+            send_realtime_notification(notification)
+
     return notification
+
+
+def send_realtime_notification(notification):
+    """
+    Send a notification to the user in real-time via WebSocket.
+
+    Args:
+        notification: Notification instance
+    """
+    if not notification.user:
+        return
+
+    # Get the channel layer
+    channel_layer = get_channel_layer()
+
+    # Prepare notification data
+    notification_data = {
+        "type": "notification",
+        "data": {
+            "id": notification.id,
+            "notification_type": notification.notification_type,
+            "notification_type_name": notification.notification_type_name,
+            "subject": notification.subject,
+            "content": notification.content,
+            "created_at": notification.created_at.isoformat(),
+            "is_read": notification.is_read,
+        },
+    }
+
+    # Add any additional data from the notification
+    if notification.data:
+        notification_data["data"]["additional_data"] = notification.data
+
+    # Send to the user's notification group
+    try:
+        async_to_sync(channel_layer.group_send)(
+            f"notifications_{notification.user.id}", notification_data
+        )
+    except Exception as e:
+        logger.error(f"Error sending real-time notification: {str(e)}")
 
 
 def mark_notification_as_read(notification_id, user):

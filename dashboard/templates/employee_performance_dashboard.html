@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Employee Performance Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f5f7fa;
+        color: #333;
+      }
+      .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      h1 {
+        color: #2c3e50;
+        margin: 0;
+      }
+      .filters {
+        background-color: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      .charts-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+      .chart-container {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      select,
+      button {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: white;
+        font-size: 14px;
+      }
+      button {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      .metrics-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+      .metric-card {
+        background-color: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      .metric-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+      .metric-title {
+        font-size: 14px;
+        color: #7f8c8d;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <div class="header">
+        <h1>Employee Performance Dashboard</h1>
+        <div>
+          <button id="export-pdf">Export PDF</button>
+        </div>
+      </div>
+
+      <div class="filters">
+        <label for="employee-select">Employee:</label>
+        <select id="employee-select">
+          <option value="">All Employees</option>
+          <!-- Will be populated dynamically -->
+        </select>
+
+        <label for="metric-select">Metric:</label>
+        <select id="metric-select">
+          <option value="customer_satisfaction">Customer Satisfaction</option>
+          <option value="bookings_processed">Bookings Processed</option>
+          <option value="revenue_generated">Revenue Generated</option>
+          <option value="response_time_minutes">Response Time (min)</option>
+          <option value="task_completion_rate">Task Completion Rate (%)</option>
+        </select>
+
+        <label for="period-select">Period:</label>
+        <select id="period-select">
+          <option value="7">Last 7 Days</option>
+          <option value="30" selected>Last 30 Days</option>
+          <option value="90">Last 90 Days</option>
+        </select>
+
+        <button id="apply-filters">Apply Filters</button>
+      </div>
+
+      <div class="metrics-container">
+        <div class="metric-card">
+          <div class="metric-value" id="avg-satisfaction">-</div>
+          <div class="metric-title">Avg. Satisfaction</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="total-bookings">-</div>
+          <div class="metric-title">Total Bookings</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="total-revenue">-</div>
+          <div class="metric-title">Total Revenue</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="avg-response">-</div>
+          <div class="metric-title">Avg. Response Time</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="avg-completion">-</div>
+          <div class="metric-title">Avg. Completion Rate</div>
+        </div>
+      </div>
+
+      <div class="charts-container">
+        <div class="chart-container">
+          <h2>Performance Trends</h2>
+          <canvas id="trends-chart"></canvas>
+        </div>
+        <div class="chart-container">
+          <h2>Employee Comparison</h2>
+          <canvas id="comparison-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // API endpoints
+      const API_BASE_URL = '/api/employees'
+      let trendsChart, comparisonChart
+      
+      // On page load
+      document.addEventListener('DOMContentLoaded', function () {
+        // Initialize charts
+        initializeCharts()
+      
+        // Load employees into dropdown
+        loadEmployees()
+      
+        // Set up event handlers
+        document.getElementById('apply-filters').addEventListener('click', refreshDashboard)
+        document.getElementById('export-pdf').addEventListener('click', exportPDF)
+      
+        // Initial dashboard load
+        refreshDashboard()
+      })
+      
+      // Load employees into dropdown
+      async function loadEmployees() {
+        try {
+          const response = await fetch(`${API_BASE_URL}/employees/`)
+          const data = await response.json()
+      
+          const employeeSelect = document.getElementById('employee-select')
+          data.results.forEach((employee) => {
+            const option = document.createElement('option')
+            option.value = employee.id
+            option.textContent = employee.user_email || employee.user.email
+            employeeSelect.appendChild(option)
+          })
+        } catch (error) {
+          console.error('Error loading employees:', error)
+        }
+      }
+      
+      // Initialize chart objects
+      function initializeCharts() {
+        // Performance trends chart
+        const trendsCtx = document.getElementById('trends-chart').getContext('2d')
+        trendsChart = new Chart(trendsCtx, {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: 'Performance',
+                data: [],
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: 'Performance Over Time'
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            }
+          }
+        })
+      
+        // Employee comparison chart
+        const comparisonCtx = document.getElementById('comparison-chart').getContext('2d')
+        comparisonChart = new Chart(comparisonCtx, {
+          type: 'bar',
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: 'Employee Comparison',
+                data: [],
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: 'Employee Comparison'
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            }
+          }
+        })
+      }
+      
+      // Refresh dashboard with current filters
+      async function refreshDashboard() {
+        const employeeId = document.getElementById('employee-select').value
+        const metric = document.getElementById('metric-select').value
+        const days = document.getElementById('period-select').value
+      
+        await Promise.all([loadPerformanceTrends(employeeId, metric, days), loadEmployeeComparison(metric, days), loadSummaryMetrics(employeeId, days)])
+      }
+      
+      // Load performance trends data
+      async function loadPerformanceTrends(employeeId, metric, days) {
+        try {
+          let url = `${API_BASE_URL}/performance-metrics/trends/?metric=${metric}&days=${days}`
+          if (employeeId) {
+            url += `&employee_id=${employeeId}`
+          }
+      
+          const response = await fetch(url)
+          const data = await response.json()
+      
+          // Update chart
+          trendsChart.data.labels = data.data.map((item) => {
+            const date = new Date(item.date)
+            return date.toLocaleDateString()
+          })
+          trendsChart.data.datasets[0].data = data.data.map((item) => item.value)
+      
+          // Update chart title based on metric
+          let metricLabel = getMetricLabel(metric)
+          trendsChart.options.plugins.title.text = `${metricLabel} Over Time`
+          trendsChart.data.datasets[0].label = metricLabel
+      
+          trendsChart.update()
+        } catch (error) {
+          console.error('Error loading performance trends:', error)
+        }
+      }
+      
+      // Load employee comparison data
+      async function loadEmployeeComparison(metric, days) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/performance-metrics/comparison/?metric=${metric}&days=${days}`)
+          const data = await response.json()
+      
+          // Update chart
+          comparisonChart.data.labels = data.data.map((item) => item.employee_name)
+          comparisonChart.data.datasets[0].data = data.data.map((item) => item.value)
+      
+          // Update chart title based on metric
+          let metricLabel = getMetricLabel(metric)
+          comparisonChart.options.plugins.title.text = `Employee Comparison - ${metricLabel}`
+          comparisonChart.data.datasets[0].label = metricLabel
+      
+          comparisonChart.update()
+        } catch (error) {
+          console.error('Error loading employee comparison:', error)
+        }
+      }
+      
+      // Load summary metrics
+      async function loadSummaryMetrics(employeeId, days) {
+        try {
+          let url = `${API_BASE_URL}/employee-stats/?days=${days}`
+          if (employeeId) {
+            url += `&employee_id=${employeeId}`
+          }
+      
+          const response = await fetch(url)
+          const data = await response.json()
+      
+          // Update metric cards
+          document.getElementById('avg-satisfaction').textContent = data.performance_stats?.avg_satisfaction?.toFixed(2) || '-'
+      
+          document.getElementById('total-bookings').textContent = data.performance_stats?.total_bookings || '-'
+      
+          document.getElementById('total-revenue').textContent = data.performance_stats?.total_revenue ? `$${parseFloat(data.performance_stats.total_revenue).toFixed(2)}` : '-'
+      
+          document.getElementById('avg-response').textContent = data.performance_stats?.avg_response_time ? `${data.performance_stats.avg_response_time} min` : '-'
+      
+          document.getElementById('avg-completion').textContent = data.performance_stats?.avg_completion_rate ? `${data.performance_stats.avg_completion_rate}%` : '-'
+        } catch (error) {
+          console.error('Error loading summary metrics:', error)
+        }
+      }
+      
+      // Helper function to get human-readable metric label
+      function getMetricLabel(metric) {
+        const labels = {
+          customer_satisfaction: 'Customer Satisfaction',
+          bookings_processed: 'Bookings Processed',
+          revenue_generated: 'Revenue Generated',
+          response_time_minutes: 'Response Time (min)',
+          task_completion_rate: 'Completion Rate (%)'
+        }
+        return labels[metric] || metric
+      }
+      
+      // Export dashboard as PDF
+      function exportPDF() {
+        alert('PDF export functionality would be implemented here')
+        // In a real implementation, you would:
+        // 1. Use a library like jsPDF or html2canvas
+        // 2. Convert the dashboard to PDF
+        // 3. Trigger download
+      }
+    </script>
+  </body>
+</html>
