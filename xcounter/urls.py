@@ -34,6 +34,13 @@ def home_view(request):
                 "promotions": "api/promotions/",
                 "employees": "api/employees/",
                 "dashboard": "api/dashboard/",
+                "notifications": {
+                    "list": "api/notifications/notifications/",
+                    "preferences": "api/notifications/preferences/",
+                    "mark_as_read": "api/notifications/notifications/{id}/mark_as_read/",
+                    "mark_all_as_read": "api/notifications/notifications/mark_all_as_read/",
+                    "test": "api/notifications/test/",
+                },
                 "docs": "/swagger/",
             },
         }
@@ -50,6 +57,7 @@ urlpatterns = [
     path("api/promotions/", include("promotions.urls")),
     path("api/employees/", include("employees.urls")),
     path("api/dashboard/", include("dashboard.urls")),
+    path("api/notifications/", include("notifications.urls")),
 ]
 
 # Serve media files in development
