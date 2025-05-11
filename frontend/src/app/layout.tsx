@@ -17,8 +17,8 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "XCounter - Movie Event Booking System",
-  description: "Book your favorite movies and events with ease",
+  title: "XCounter - Movie Booking System",
+  description: "Book your favorite movies with ease",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

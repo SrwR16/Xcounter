@@ -31,12 +31,11 @@ export default function HeroSection() {
       <div className="relative z-20 px-4 py-32 sm:px-6 sm:py-40 lg:py-48 lg:px-8">
         <div className="container mx-auto">
           <div className="max-w-2xl">
-            <h1 className="text-4xl font-display font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 className="mt-10 text-4xl font-display font-bold tracking-tight text-white sm:text-6xl">
               Your Ultimate Movie Experience
             </h1>
-            <p className="mt-6 text-xl text-gray-300">
-              Book tickets for the latest blockbusters, explore upcoming events, and enjoy premium cinema experiences
-              all in one place.
+            <p className="mt-6 text-lg leading-8 text-gray-300">
+              Book tickets for the latest blockbusters and enjoy premium cinema experiences all in one place.
             </p>
 
             {/* Search bar */}
@@ -48,8 +47,8 @@ export default function HeroSection() {
                 <input
                   id="search-movie"
                   type="text"
-                  placeholder="Search for movies, events, or theaters..."
-                  className="block w-full rounded-md border-0 bg-white/10 px-4 py-3 text-white shadow-sm ring-1 ring-inset ring-white/10 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary-500 sm:text-sm"
+                  placeholder="Search for movies or theaters..."
+                  className="block w-full rounded-md border-0 bg-white/10 px-4 py-3 text-white shadow-sm ring-1 ring-inset ring-white/10 placeholder:text-white/70 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -77,12 +76,6 @@ export default function HeroSection() {
                 className="rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20"
               >
                 Coming Soon
-              </Link>
-              <Link
-                href="/events"
-                className="rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20"
-              >
-                Special Events
               </Link>
               <Link
                 href="/theaters"

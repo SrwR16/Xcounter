@@ -4,7 +4,6 @@ const navigation = {
   main: [
     { name: "Home", href: "/" },
     { name: "Movies", href: "/movies" },
-    { name: "Events", href: "/events" },
     { name: "Theaters", href: "/theaters" },
     { name: "About Us", href: "/about" },
     { name: "Contact", href: "/contact" },
@@ -82,10 +81,12 @@ export default function SiteFooter() {
               </div>
               <p className="text-xl font-display font-bold text-white mt-2">XCounter</p>
             </div>
-            <p className="text-gray-400 text-base">
-              Your ultimate destination for premium movie experiences. Book tickets, explore events, and enjoy the best
-              cinema has to offer.
-            </p>
+            <div>
+              <p className="text-center text-base text-gray-500">
+                Your ultimate destination for premium movie experiences. Book tickets and enjoy the best cinema has to
+                offer.
+              </p>
+            </div>
             <div className="flex space-x-6">
               {navigation.social.map((item) => (
                 <a key={item.name} href={item.href} className="text-gray-400 hover:text-white">
