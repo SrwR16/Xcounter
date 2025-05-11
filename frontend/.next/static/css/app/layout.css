@@ -1961,16 +1961,6 @@ video {
   transition-duration: 300ms;
 }
 
-.placeholder\:text-gray-400::-moz-placeholder {
-  --tw-text-opacity: 1;
-  color: rgb(156 163 175 / var(--tw-text-opacity, 1));
-}
-
-.placeholder\:text-gray-400::placeholder {
-  --tw-text-opacity: 1;
-  color: rgb(156 163 175 / var(--tw-text-opacity, 1));
-}
-
 .placeholder\:text-white\/70::-moz-placeholder {
   color: rgb(255 255 255 / 0.7);
 }
@@ -2290,19 +2280,14 @@ video {
     line-height: 2.5rem;
   }
 
-  .sm\:text-5xl {
-    font-size: 3rem;
+  .sm\:text-6xl {
+    font-size: 3.75rem;
     line-height: 1;
   }
 
   .sm\:text-sm {
     font-size: 0.875rem;
     line-height: 1.25rem;
-  }
-
-  .sm\:text-6xl {
-    font-size: 3.75rem;
-    line-height: 1;
   }
 }
 
@@ -2458,11 +2443,6 @@ video {
 
   .lg\:text-5xl {
     font-size: 3rem;
-    line-height: 1;
-  }
-
-  .lg\:text-6xl {
-    font-size: 3.75rem;
     line-height: 1;
   }
 }
