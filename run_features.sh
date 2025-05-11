@@ -1,39 +1,41 @@
 #!/bin/bash
 
-# Demo script for running all features
+# Demo script for running all features of the Movie Counter Event Booking System
 
-echo -e "\n===== Movie Counter Feature Demo =====\n"
+echo "====================================="
+echo "Movie Counter Event Booking System Demo"
+echo "====================================="
+echo
 
-# Create reports directory if it doesn't exist
-mkdir -p reports
+# Create necessary directories
+mkdir -p reports backups
 
-# Clean up expired shows
-echo -e "\n1. Cleaning up expired shows:"
-echo "-------------------------"
-venv/bin/python manage.py cleanup_expired_shows --days=30 --dry-run
+echo "Step 1: Clean up expired shows"
+venv/bin/python manage.py cleanup_expired_shows --dry-run
 
-# Generate monthly report with visualizations
-echo -e "\n2. Generating monthly reports with charts:"
-echo "-------------------------"
-venv/bin/python manage.py generate_monthly_report --include-charts --output-dir=reports
+echo
+echo "Step 2: Generate monthly reports with charts"
+venv/bin/python manage.py generate_monthly_report --output-dir=reports --include-charts
 
-# Create system backup
-echo -e "\n3. Creating system backup:"
-echo "-------------------------"
+echo
+echo "Step 3: Create a system backup"
 mkdir -p backups
 venv/bin/python manage.py create_system_backup --backup-dir=backups
 
-# Send automated notifications
-echo -e "\n4. Sending automated notifications:"
-echo "-------------------------"
+echo
+echo "Step 4: Send automated notifications"
 venv/bin/python manage.py send_automated_notifications --dry-run
 
-# Check the advanced visualizations
-echo -e "\n5. View advanced visualizations:"
-echo "-------------------------"
-echo "You can view the visualization demo at:"
-echo "file://$(pwd)/reports/visualization_demo.html"
-echo ""
-echo "Try opening this file in your browser to see the interactive charts!"
+echo
+echo "Step 5: Demo VIP Ticket Reservation (Admin feature)"
+echo "This feature allows admin users to reserve special VIP tickets for important guests."
+./test_vip_reservation.py || echo "VIP reservation test couldn't be run - make sure the server is running and admin credentials are correct"
 
-echo -e "\nAll features successfully demonstrated!"
+echo
+echo "Step 6: View Advanced Visualizations"
+echo "Open the following file in your browser to see interactive charts:"
+echo "file://$(pwd)/reports/visualization_demo.html"
+
+echo
+echo "All features demonstrated successfully!"
+echo "For more details, see the README.md file"

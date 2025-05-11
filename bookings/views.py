@@ -8,13 +8,15 @@ from rest_framework.response import Response
 from movies.models import Show
 from users.permissions import IsAdmin
 
-from .models import Booking, BookingStatus, PaymentStatus, Ticket
+from .models import Booking, BookingStatus, PaymentStatus, SeatCategory, Ticket
 from .serializers import (
     BookingCreateSerializer,
     BookingDetailSerializer,
     BookingListSerializer,
     BookingUpdateSerializer,
     TicketSerializer,
+    VIPReservationSerializer,
+    VIPTicketSerializer,
 )
 
 
@@ -196,10 +198,33 @@ class BookingViewSet(viewsets.ModelViewSet):
         serializer = BookingListSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["post"], permission_classes=[IsAdmin])
+    def vip_reservation(self, request):
+        """
+        Create a VIP reservation (admin only).
+        This allows admins to reserve special VIP tickets for important guests.
+        """
+        serializer = VIPReservationSerializer(data=request.data)
+        if serializer.is_valid():
+            booking = serializer.save()
+            return Response(
+                BookingDetailSerializer(booking).data, status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class TicketViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["seat_category", "is_used", "booking__show"]
+    search_fields = ["ticket_number", "seat_number", "booking__booking_number"]
+    ordering_fields = ["created_at", "seat_number"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -214,6 +239,15 @@ class TicketViewSet(viewsets.ReadOnlyModelViewSet):
         return Ticket.objects.select_related(
             "booking", "booking__show", "booking__show__movie"
         ).filter(booking__user=user)
+
+    def get_serializer_class(self):
+        """Use different serializer for VIP tickets"""
+        if self.action == "vip_tickets" or (
+            hasattr(self, "get_object")
+            and self.get_object().seat_category == SeatCategory.VIP
+        ):
+            return VIPTicketSerializer
+        return TicketSerializer
 
     @action(detail=True, methods=["post"])
     def mark_as_used(self, request, pk=None):
@@ -232,3 +266,18 @@ class TicketViewSet(viewsets.ReadOnlyModelViewSet):
             {"detail": f"Ticket {ticket.ticket_number} marked as used."},
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=False, methods=["get"], permission_classes=[IsAdmin])
+    def vip_tickets(self, request):
+        """Get all VIP tickets (admin only)"""
+        queryset = Ticket.objects.select_related(
+            "booking", "booking__show", "booking__show__movie", "booking__user"
+        ).filter(seat_category=SeatCategory.VIP)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)

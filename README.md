@@ -281,3 +281,34 @@ Set up email notification system
 Add in-app messaging
 Create notification preferences
 Test: Trigger notifications for various events and verify delivery
+
+## Admin Features
+
+### User Management
+
+- Admin dashboard for managing users and permissions
+- Create, update, delete users with different roles
+- Monitor user activity and status
+
+### Content Management
+
+- Add, update, or remove movies, shows, and theaters
+- Manage movie details including descriptions, cast, genres
+- Control pricing and availability
+
+### VIP Ticket Reservation
+
+- Reserve special VIP tickets for important guests
+- Auto-confirm VIP reservations without payment processing
+- Track VIP attendance and preferences
+- Endpoint: `POST /api/bookings/vip_reservation/`
+- Sample request:
+  ```json
+  {
+    "show_id": 1,
+    "user_email": "vip@example.com",
+    "seat_numbers": ["A1", "A2"],
+    "total_amount": 100.0,
+    "notes": "VIP treatment required"
+  }
+  ```
