@@ -40,6 +40,20 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
       setError(null);
+
+      // In a real implementation, the API would determine if 2FA is needed
+
+      // For demonstration purposes, redirect admin/moderator emails to 2FA flow
+      if (data.email.includes("admin") || data.email.includes("moderator")) {
+        // Simulate successful first-factor authentication
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Redirect to verification page (2FA)
+        router.push(`/verify?email=${encodeURIComponent(data.email)}`);
+        return;
+      }
+
+      // Regular user flow - complete login via auth provider
       await login(data.email, data.password);
       // Successful login will redirect via auth provider
     } catch (error) {
