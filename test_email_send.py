@@ -43,7 +43,7 @@ def test_direct_email():
         if len(sys.argv) > 1:
             recipient = sys.argv[1]
         else:
-            recipient = "admin@example.com"
+            recipient = "icount.bd@gmail.com"
 
         # Print config for debugging
         print("Email configuration:")
