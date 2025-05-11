@@ -49,6 +49,14 @@ def home_view(request):
                     "mark_message_read": "api/notifications/conversations/{conversation_id}/messages/{id}/mark_read/",
                     "mark_all_messages_read": "api/notifications/conversations/{conversation_id}/messages/mark_all_read/",
                 },
+                "reviews": {
+                    "all_reviews": "api/reviews/reviews/",
+                    "my_reviews": "api/reviews/reviews/my_reviews/",
+                    "movie_reviews": "api/reviews/movies/{movie_id}/",
+                    "add_review": "api/reviews/movies/{movie_id}/add_review/",
+                    "review_details": "api/reviews/reviews/{review_id}/",
+                    "review_replies": "api/reviews/reviews/{review_id}/replies/",
+                },
                 "docs": "/swagger/",
             },
         }
@@ -66,6 +74,7 @@ urlpatterns = [
     path("api/employees/", include("employees.urls")),
     path("api/dashboard/", include("dashboard.urls")),
     path("api/notifications/", include("notifications.urls")),
+    path("api/reviews/", include("reviews.urls")),
 ]
 
 # Serve media files in development

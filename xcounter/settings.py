@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "notifications",
     "employees",
     "promotions",
+    "reviews",
 ]
 
 MIDDLEWARE = [
