@@ -1,72 +1,35 @@
 import logging
 
 from django.core.mail import EmailMessage
-from django.template import Context, Template
-from django.utils import timezone
 
 from .models import Notification, NotificationType, UserNotificationPreference
 
 logger = logging.getLogger(__name__)
 
 
-def render_template(template_string, context_data):
-    """
-    Render a Django template with the provided context data.
-    """
-    template = Template(template_string)
-    context = Context(context_data)
-    return template.render(context)
-
-
-def create_notification(user, notification_type_name, context_data=None):
+def create_notification(
+    user, notification_type, subject, content, related_id=None, data=None
+):
     """
     Create a notification for a user.
 
     Args:
         user: CustomUser instance
-        notification_type_name: str - name of the notification type
-        context_data: dict - data to render in the template
+        notification_type: NotificationType choice
+        subject: str - notification subject
+        content: str - notification content (HTML)
+        related_id: str - optional ID of related object
+        data: dict - additional data to store with notification
 
     Returns:
         Notification instance or None if creation failed
     """
     try:
-        # Get the notification type
-        notification_type = NotificationType.objects.get(
-            name=notification_type_name, is_active=True
-        )
-
         # Get or create user notification preferences
-        preferences, created = UserNotificationPreference.objects.get_or_create(
-            user=user
-        )
-
-        # Prepare context data
-        if context_data is None:
-            context_data = {}
-
-        # Create a copy to avoid modifying the original
-        template_context = context_data.copy()
-
-        # Add user and timestamp to the template context (not stored in JSON)
-        template_context.update(
-            {
-                "user": user,
-                "timestamp": timezone.now(),
-            }
-        )
-
-        # Render templates
-        subject = render_template(notification_type.template_subject, template_context)
-        content = render_template(notification_type.template_content, template_context)
-
-        # Store only JSON-serializable data
-        json_data = {}
-        for key, value in context_data.items():
-            # Skip non-serializable objects
-            if not isinstance(value, (dict, list, str, int, float, bool, type(None))):
-                continue
-            json_data[key] = value
+        if user:
+            preferences, created = UserNotificationPreference.objects.get_or_create(
+                user=user
+            )
 
         # Create notification
         notification = Notification.objects.create(
@@ -74,19 +37,17 @@ def create_notification(user, notification_type_name, context_data=None):
             notification_type=notification_type,
             subject=subject,
             content=content,
-            data=json_data,
+            related_id=related_id,
+            data=data,
         )
 
         return notification
-    except NotificationType.DoesNotExist:
-        logger.error(f"Notification type '{notification_type_name}' not found")
-        return None
     except Exception as e:
         logger.error(f"Error creating notification: {str(e)}")
         return None
 
 
-def send_email_notification(notification):
+def send_notification_email(notification):
     """
     Send an email notification.
 
@@ -97,12 +58,43 @@ def send_email_notification(notification):
         bool: True if sent successfully, False otherwise
     """
     try:
+        # System notifications don't have a user
+        if not notification.user:
+            logger.info("Cannot send email for system notification with no user")
+            return False
+
         # Check if user has email notifications enabled
         preferences, created = UserNotificationPreference.objects.get_or_create(
             user=notification.user
         )
 
-        if not preferences.email_enabled:
+        # Check if user has this notification type enabled
+        if (
+            notification.notification_type == NotificationType.BOOKING_CONFIRMATION
+            and not preferences.booking_confirmations
+        ):
+            return False
+        elif (
+            notification.notification_type == NotificationType.SHOW_REMINDER
+            and not preferences.show_reminders
+        ):
+            return False
+        elif (
+            notification.notification_type == NotificationType.MOVIE_PREMIERE
+            and not preferences.movie_premieres
+        ):
+            return False
+        elif (
+            notification.notification_type == NotificationType.PROMOTION
+            and not preferences.promotions
+        ):
+            return False
+        elif (
+            notification.notification_type == NotificationType.SYSTEM_ANNOUNCEMENT
+            and not preferences.system_announcements
+        ):
+            return False
+        elif not preferences.email_enabled:
             logger.info(
                 f"Email notifications disabled for user {notification.user.email}"
             )
@@ -135,24 +127,37 @@ def send_email_notification(notification):
         return False
 
 
-def send_notification(user, notification_type_name, context_data=None):
+def send_notification(
+    user,
+    notification_type,
+    subject,
+    content,
+    related_id=None,
+    data=None,
+    send_email=True,
+):
     """
     Create and send a notification to a user.
 
     Args:
         user: CustomUser instance
-        notification_type_name: str - name of the notification type
-        context_data: dict - data to render in the template
+        notification_type: NotificationType choice
+        subject: str - notification subject
+        content: str - notification content (HTML)
+        related_id: str - optional ID of related object
+        data: dict - additional data to store with notification
+        send_email: bool - whether to send an email for this notification
 
     Returns:
         Notification instance or None if creation failed
     """
-    notification = create_notification(user, notification_type_name, context_data)
+    notification = create_notification(
+        user, notification_type, subject, content, related_id, data
+    )
 
     if notification:
-        # Check if notification type requires email
-        if notification.notification_type.requires_email:
-            send_email_notification(notification)
+        if send_email:
+            send_notification_email(notification)
         else:
             # Just mark as sent for in-app only notifications
             notification.status = Notification.Status.SENT
@@ -175,12 +180,39 @@ def mark_notification_as_read(notification_id, user):
     try:
         notification = Notification.objects.get(id=notification_id, user=user)
         if not notification.is_read:
-            notification.is_read = True
-            notification.read_at = timezone.now()
-            notification.save()
+            notification.mark_as_read()
         return True
     except Notification.DoesNotExist:
         return False
     except Exception as e:
         logger.error(f"Error marking notification as read: {str(e)}")
         return False
+
+
+def create_system_announcement(subject, content, data=None):
+    """
+    Create a system announcement notification template.
+    This will be processed by the automated notification system to send to all users.
+
+    Args:
+        subject: str - notification subject
+        content: str - notification content (HTML)
+        data: dict - additional data to store with notification
+
+    Returns:
+        Notification instance or None if creation failed
+    """
+    try:
+        # Create template notification with no user
+        notification = Notification.objects.create(
+            user=None,
+            notification_type=NotificationType.SYSTEM_ANNOUNCEMENT,
+            subject=subject,
+            content=content,
+            data=data,
+            status=Notification.Status.PENDING,
+        )
+        return notification
+    except Exception as e:
+        logger.error(f"Error creating system announcement: {str(e)}")
+        return None

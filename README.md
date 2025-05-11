@@ -13,6 +13,117 @@ A comprehensive event booking system designed for a movie theater, where users c
 - Email notifications and messaging
 - Role-specific dashboards
 
+## Security Features
+
+### Two-Factor Authentication (2FA)
+
+- Email-based verification codes for Admin and Moderator users
+- 6-digit verification code with 10-minute expiry
+- Required at each login for enhanced security
+- Resend option for verification codes
+
+To use 2FA:
+
+1. Log in with your email and password
+2. A verification code will be sent to your registered email
+3. Enter the code on the verification page
+4. If valid, you will be logged in successfully
+
+This provides an additional layer of security for privileged accounts in the system.
+
+## Management Commands
+
+XCounter includes several powerful management commands for system administration:
+
+### Cleanup Expired Shows
+
+Archives or deletes shows older than a specified number of days.
+
+```bash
+python manage.py cleanup_expired_shows --days=30
+```
+
+Options:
+
+- `--days`: Shows older than this many days will be marked as archived (default: 30)
+- `--delete`: Delete expired shows instead of marking them as archived
+- `--dry-run`: Perform a dry run without making any changes
+
+### Generate Monthly Reports
+
+Generates comprehensive reports on movies, bookings, and revenue.
+
+```bash
+python manage.py generate_monthly_report --month=5 --year=2025 --format=csv
+```
+
+Options:
+
+- `--month`: Month for which to generate reports (1-12)
+- `--year`: Year for which to generate reports
+- `--format`: Output format for reports (csv or text)
+- `--output-dir`: Directory to save reports (defaults to reports/ directory)
+
+### Create System Backup
+
+Creates backups of the database and media files.
+
+```bash
+python manage.py create_system_backup --backup-dir=/path/to/backups --include-media
+```
+
+Options:
+
+- `--backup-dir`: Directory where backups will be stored (defaults to backups/ directory)
+- `--include-media`: Include media files in the backup
+- `--compress`: Compress the backup files using gzip
+
+### Send Automated Notifications
+
+Sends automated notifications based on various triggers.
+
+```bash
+python manage.py send_automated_notifications
+```
+
+This command handles various notification scenarios:
+
+- Upcoming show reminders (24 hours before showtime)
+- Booking confirmation reminders for pending bookings
+- Movie premiere announcements for users with relevant preferences
+- Re-engagement emails for inactive users
+- System announcement distribution
+
+## Advanced Reporting
+
+The system now includes comprehensive reporting capabilities:
+
+1. Movie performance reports with revenue analysis
+2. Booking reports with daily breakdown
+3. Revenue reports with payment method and ticket type breakdown
+
+Reports can be generated in CSV or text format and support flexible date ranges.
+
+## Automated Notifications
+
+The notification system has been enhanced with:
+
+1. Multiple notification types for different scenarios:
+
+   - Booking confirmations/cancellations
+   - Show reminders
+   - Movie premieres
+   - System announcements
+   - User inactivity alerts
+   - Promotion notices
+   - Review responses
+
+2. Support for both email and in-app notifications
+
+3. User-configurable notification preferences
+
+4. Automated notification triggers for relevant events
+
 ## Setup Instructions
 
 1. Clone the repository:
