@@ -1,0 +1,1 @@
+self.__NEXT_FONT_MANIFEST="{\"pages\":{},\"app\":{\"/home/sarw/Programming/xcounter/frontend/src/app/layout\":[\"static/media/a34f9d1faa5f3315-s.p.woff2\",\"static/media/4f05ba3a6752a328-s.p.woff2\"]},\"appUsingSizeAdjust\":true,\"pagesUsingSizeAdjust\":false}"
