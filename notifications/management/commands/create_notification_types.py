@@ -166,6 +166,28 @@ class Command(BaseCommand):
                 "requires_email": True,
                 "requires_inapp": True,
             },
+            {
+                "name": "NEW_MESSAGE",
+                "description": "Sent when a new message is received in a conversation",
+                "template_subject": "{{ subject }}",
+                "template_content": """
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
+                    <h2 style="color: #3498db;">New Message</h2>
+                    <p>Dear {{ user.get_full_name|default:user.email }},</p>
+                    <p>You have received a new message from <strong>{{ sender }}</strong> regarding <strong>{{ subject }}</strong>:</p>
+                    <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #3498db;">
+                        <p>{{ message }}</p>
+                    </div>
+                    <div style="text-align: center; margin: 25px 0;">
+                        <a href="/conversations/{{ conversation_id }}" style="background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Conversation</a>
+                    </div>
+                    <p>Please log in to your account to respond to this message.</p>
+                    <p>Best regards,<br>The XCounter Team</p>
+                </div>
+                """,
+                "requires_email": True,
+                "requires_inapp": True,
+            },
         ]
 
         for nt_data in notification_types:

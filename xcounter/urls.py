@@ -41,6 +41,14 @@ def home_view(request):
                     "mark_all_as_read": "api/notifications/notifications/mark_all_as_read/",
                     "test": "api/notifications/test/",
                 },
+                "messaging": {
+                    "conversations": "api/notifications/conversations/",
+                    "messages": "api/notifications/conversations/{conversation_id}/messages/",
+                    "close_conversation": "api/notifications/conversations/{id}/close/",
+                    "reopen_conversation": "api/notifications/conversations/{id}/reopen/",
+                    "mark_message_read": "api/notifications/conversations/{conversation_id}/messages/{id}/mark_read/",
+                    "mark_all_messages_read": "api/notifications/conversations/{conversation_id}/messages/mark_all_read/",
+                },
                 "docs": "/swagger/",
             },
         }

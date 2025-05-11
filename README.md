@@ -102,3 +102,27 @@ Set up email notification system
 Add in-app messaging
 Create notification preferences
 Test: Trigger notifications for various events and verify delivery
+
+## Internal Messaging System
+
+The XCounter platform includes a comprehensive internal messaging system that allows customers to communicate directly with theater staff. This feature facilitates quick resolution of customer queries and enhances the overall user experience.
+
+### Key Features
+
+- **Conversation Management**: Users can create conversation threads with specific subjects
+- **Real-time Messaging**: Exchange messages with theater staff
+- **Notification Integration**: Receive email and in-app notifications for new messages
+- **Read Status Tracking**: Track which messages have been read
+- **Conversation Closure**: Staff can close resolved conversations
+- **Role-based Access Control**: Staff can view and respond to all conversations, while customers can only see their own
+
+### API Endpoints
+
+- Get all conversations: `GET /api/notifications/conversations/`
+- Create new conversation: `POST /api/notifications/conversations/`
+- View conversation details: `GET /api/notifications/conversations/{id}/`
+- Send message: `POST /api/notifications/conversations/{id}/messages/`
+- Mark message as read: `POST /api/notifications/conversations/{id}/messages/{id}/mark_read/`
+- Mark all messages as read: `POST /api/notifications/conversations/{id}/messages/mark_all_read/`
+- Close conversation: `POST /api/notifications/conversations/{id}/close/`
+- Reopen conversation: `POST /api/notifications/conversations/{id}/reopen/`
