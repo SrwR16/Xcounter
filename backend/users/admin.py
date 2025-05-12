@@ -25,6 +25,7 @@ class CustomUserAdmin(UserAdmin):
     list_filter = ("role", "is_active", "is_staff", "is_email_verified")
     search_fields = ("email", "profile__full_name")
     ordering = ("email",)
+    readonly_fields = ("date_joined",)
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
