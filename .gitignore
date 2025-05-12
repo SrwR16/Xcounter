@@ -49,3 +49,4 @@ htmlcov/
 .env.prod
 .env.staging
 node_modules/
+.next/
