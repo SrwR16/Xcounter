@@ -20,6 +20,9 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 
 def home_view(request):
@@ -63,9 +66,36 @@ def home_view(request):
     )
 
 
+class APIRootView(APIView):
+    """
+    Root view for the API that shows available endpoints
+    """
+
+    def get(self, request):
+        return Response(
+            {
+                "message": "XCounter Movie Booking API",
+                "endpoints": {
+                    "users": "/api/users/",
+                    "movies": "/api/movies/",
+                    "bookings": "/api/bookings/",
+                    "coupons": "/api/coupons/",
+                    "promotions": "/api/promotions/",
+                    "employees": "/api/employees/",
+                    "dashboard": "/api/dashboard/",
+                    "notifications": "/api/notifications/",
+                    "reviews": "/api/reviews/",
+                    "docs": "/swagger/",
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 urlpatterns = [
     path("", home_view, name="home"),
     path("admin/", admin.site.urls),
+    path("api/", APIRootView.as_view(), name="api_root"),
     path("api/users/", include("users.urls")),
     path("api/movies/", include("movies.urls")),
     path("api/bookings/", include("bookings.urls")),

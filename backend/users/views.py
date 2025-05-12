@@ -469,3 +469,32 @@ class LoginAPIView(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class UsersAPIView(APIView):
+    """
+    Root view for the users API that shows available endpoints
+    """
+
+    def get(self, request):
+        return Response(
+            {
+                "message": "Users API",
+                "endpoints": {
+                    "register": "/api/users/register/",
+                    "login": "/api/users/login/",
+                    "logout": "/api/users/logout/",
+                    "verify_2fa": "/api/users/verify-2fa/",
+                    "resend_2fa_code": "/api/users/resend-2fa-code/",
+                    "verify_email": "/api/users/verify-email/<uidb64>/<token>/",
+                    "password_reset": "/api/users/password-reset/",
+                    "password_reset_confirm": "/api/users/password-reset/<uidb64>/<token>/",
+                    "user_list": "/api/users/users/",
+                    "user_detail": "/api/users/users/<int:pk>/",
+                    "profile_detail": "/api/users/profile/<int:pk>/",
+                    "current_user": "/api/users/me/",
+                    "change_password": "/api/users/change-password/",
+                },
+            },
+            status=status.HTTP_200_OK,
+        )

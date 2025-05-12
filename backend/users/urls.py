@@ -5,6 +5,8 @@ from . import views
 app_name = "users"
 
 urlpatterns = [
+    # Root users API endpoint
+    path("", views.UsersAPIView.as_view(), name="users_api_root"),
     # Authentication endpoints
     path("register/", views.RegisterView.as_view(), name="register"),
     path("login/", views.LoginView.as_view(), name="login"),
