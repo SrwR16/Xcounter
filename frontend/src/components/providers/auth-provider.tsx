@@ -15,7 +15,8 @@ type User = {
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ requires2FA: boolean; userId?: string }>;
+  verify2FA: (userId: string, code: string) => Promise<void>;
   logout: () => void;
   register: (name: string, email: string, password: string) => Promise<void>;
 };
@@ -61,11 +62,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
       const { data } = await axios.post(`${apiUrl}/users/login/`, { email, password });
+
+      // Check if 2FA is required
+      if (data.requires_2fa) {
+        return { requires2FA: true, userId: data.user_id };
+      }
+
+      // Regular login flow
       Cookies.set("token", data.token, { expires: 7 });
       await fetchUser();
       router.push("/");
+      return { requires2FA: false };
     } catch (error) {
       throw new Error("Invalid credentials");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verify2FA = async (userId: string, code: string) => {
+    try {
+      setIsLoading(true);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+      const { data } = await axios.post(`${apiUrl}/users/verify-2fa/`, {
+        user_id: userId,
+        code,
+      });
+
+      Cookies.set("token", data.token, { expires: 7 });
+      await fetchUser();
+      router.push("/dashboard");
+    } catch (error) {
+      throw new Error("Invalid verification code");
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +129,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  return <AuthContext.Provider value={{ user, isLoading, login, logout, register }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, isLoading, login, verify2FA, logout, register }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export const useAuth = () => {

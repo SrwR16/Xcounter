@@ -350,7 +350,7 @@ class TwoFactorVerificationView(generics.GenericAPIView):
                 user=user, code=code, is_used=False
             ).first()
 
-            if not code_obj or code_obj.is_expired():
+            if not code_obj or not code_obj.is_valid():
                 return Response(
                     {"error": "Invalid or expired verification code."},
                     status=status.HTTP_400_BAD_REQUEST,

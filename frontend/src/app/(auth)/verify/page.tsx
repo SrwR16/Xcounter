@@ -1,6 +1,8 @@
 "use client";
 
+import { useAuth } from "@/components/providers/auth-provider";
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -22,9 +24,11 @@ export default function VerifyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
+  const userId = searchParams.get("userId") || "";
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [resendSuccess, setResendSuccess] = useState(false);
+  const { verify2FA } = useAuth();
 
   const {
     register,
@@ -39,19 +43,16 @@ export default function VerifyPage() {
     setError("");
 
     try {
-      // Simulate API call to verify code
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // For demo purposes, any code "123456" is valid
-      if (data.code === "123456") {
-        // Redirect to dashboard based on role
-        // In a real app, this would come from the verification API response
-        router.push("/dashboard");
-      } else {
-        setError("Invalid verification code. Please try again.");
+      if (!userId) {
+        setError("User ID is missing. Please go back to login page.");
+        return;
       }
+
+      // Call verify2FA method from auth provider
+      await verify2FA(userId, data.code);
+      // On success, auth provider will redirect to dashboard
     } catch (err) {
-      setError("An error occurred during verification. Please try again.");
+      setError("Invalid verification code. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -63,8 +64,14 @@ export default function VerifyPage() {
     setResendSuccess(false);
 
     try {
-      // Simulate API call to resend verification code
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!userId) {
+        setError("User ID is missing. Please go back to login page.");
+        return;
+      }
+
+      // Call API to resend verification code
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+      await axios.post(`${apiUrl}/users/resend-2fa-code/`, { user_id: userId });
       setResendSuccess(true);
     } catch (err) {
       setError("Failed to resend verification code. Please try again.");
