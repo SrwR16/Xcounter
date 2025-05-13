@@ -11,7 +11,6 @@ urlpatterns = [
     path("register/", views.RegisterView.as_view(), name="register"),
     path("login/", views.LoginView.as_view(), name="login"),
     path("logout/", views.LogoutView.as_view(), name="logout"),
-    path("api/auth/login/", views.LoginAPIView.as_view(), name="login-api"),
     # Two-factor authentication URLs
     path("verify-2fa/", views.TwoFactorVerificationView.as_view(), name="verify_2fa"),
     path(

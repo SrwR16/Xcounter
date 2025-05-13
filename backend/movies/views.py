@@ -6,7 +6,6 @@ from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-
 from reviews.models import Review, ReviewReply
 from users.permissions import IsAdmin, IsAdminOrModerator
 
@@ -60,7 +59,7 @@ class MovieViewSet(viewsets.ModelViewSet):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    filterset_fields = ["genre", "is_active", "release_date"]
+    filterset_fields = ["genres", "is_active", "release_date"]
     search_fields = ["title", "description", "director", "cast"]
     ordering_fields = ["release_date", "duration_minutes", "rating"]
     ordering = ["-release_date"]

@@ -145,10 +145,7 @@ class LoginSerializer(serializers.Serializer):
         # Get or create token
         token, created = Token.objects.get_or_create(user=user)
 
-        return {
-            "email": user.email,
-            "token": token.key,
-        }
+        return {"email": user.email, "token": token.key, "user": user}
 
 
 class ChangePasswordSerializer(serializers.Serializer):
