@@ -59,7 +59,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const { data } = await axios.post("/api/users/login/", { email, password });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+      const { data } = await axios.post(`${apiUrl}/users/login/`, { email, password });
       Cookies.set("token", data.token, { expires: 7 });
       await fetchUser();
       router.push("/");
