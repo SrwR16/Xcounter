@@ -1,5 +1,5 @@
 from django.contrib.sites.shortcuts import get_current_site
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
@@ -23,7 +23,9 @@ def send_verification_email(request, user):
             "protocol": "https" if request.is_secure() else "http",
         },
     )
-    email = EmailMessage(mail_subject, message, to=[user.email])
+    text_content = "Please activate your account by clicking the link."
+    email = EmailMultiAlternatives(mail_subject, text_content, to=[user.email])
+    email.attach_alternative(message, "text/html")
     return email.send()
 
 
@@ -43,7 +45,9 @@ def send_password_reset_email(request, user):
             "protocol": "https" if request.is_secure() else "http",
         },
     )
-    email = EmailMessage(mail_subject, message, to=[user.email])
+    text_content = "Please reset your password by clicking the link."
+    email = EmailMultiAlternatives(mail_subject, text_content, to=[user.email])
+    email.attach_alternative(message, "text/html")
     return email.send()
 
 
@@ -58,5 +62,7 @@ def send_welcome_email(user):
             "user": user,
         },
     )
-    email = EmailMessage(mail_subject, message, to=[user.email])
+    text_content = "Welcome to XCounter!"
+    email = EmailMultiAlternatives(mail_subject, text_content, to=[user.email])
+    email.attach_alternative(message, "text/html")
     return email.send()

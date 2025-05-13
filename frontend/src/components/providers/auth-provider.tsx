@@ -26,6 +26,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // Check for existing auth token
@@ -77,11 +79,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (name: string, email: string, password: string) => {
     try {
       setIsLoading(true);
-      await axios.post("/api/users/register/", { name, email, password });
-      // Automatically log in after registration
-      await login(email, password);
-    } catch (error) {
-      throw new Error("Registration failed");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+      await axios.post(`${apiUrl}/users/register/`, {
+        name,
+        email,
+        password,
+        password_confirm: password,
+      });
+      // Do NOT log in immediately
+      // Instead, show a message to the user (see below)
+    } catch (error: any) {
+      console.error(error.response?.data || error.message);
+      throw new Error(
+        error.response?.data?.email?.[0] === "user with this email already exists."
+          ? "This email may already be in use."
+          : "Registration failed"
+      );
     } finally {
       setIsLoading(false);
     }
