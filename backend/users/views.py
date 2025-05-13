@@ -13,6 +13,8 @@ from .serializers import (
     ChangePasswordSerializer,
     LoginSerializer,
     RegisterSerializer,
+    ResendTwoFactorCodeSerializer,
+    TwoFactorVerificationSerializer,
     UserProfileSerializer,
     UserSerializer,
 )
@@ -332,17 +334,15 @@ class TwoFactorVerificationView(generics.GenericAPIView):
     View for two-factor authentication verification
     """
 
+    serializer_class = TwoFactorVerificationSerializer
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        user_id = request.data.get("user_id")
-        code = request.data.get("code")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if not user_id or not code:
-            return Response(
-                {"error": "User ID and verification code are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        user_id = serializer.validated_data["user_id"]
+        code = serializer.validated_data["code"]
 
         try:
             user = CustomUser.objects.get(pk=user_id)
@@ -384,15 +384,14 @@ class ResendTwoFactorCodeView(generics.GenericAPIView):
     View for resending two-factor authentication code
     """
 
+    serializer_class = ResendTwoFactorCodeSerializer
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        user_id = request.data.get("user_id")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if not user_id:
-            return Response(
-                {"error": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST
-            )
+        user_id = serializer.validated_data["user_id"]
 
         try:
             user = CustomUser.objects.get(pk=user_id)

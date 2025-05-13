@@ -171,3 +171,17 @@ class ChangePasswordSerializer(serializers.Serializer):
         if not user.check_password(value):
             raise serializers.ValidationError(_("Old password is not correct."))
         return value
+
+
+class TwoFactorVerificationSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField(required=True)
+    code = serializers.CharField(max_length=6, min_length=6, required=True)
+
+    def validate_code(self, value):
+        if not value.isdigit():
+            raise serializers.ValidationError("Code must contain only digits")
+        return value
+
+
+class ResendTwoFactorCodeSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField(required=True)

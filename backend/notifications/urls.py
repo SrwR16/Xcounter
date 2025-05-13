@@ -18,12 +18,23 @@ messages_router.register(
 app_name = "notifications"
 
 urlpatterns = [
-    path("", include(router.urls)),
-    path("", include(messages_router.urls)),
+    # Explicit notification action URLs first, without 'notifications/' prefix
+    path(
+        "mark_all_as_read/",
+        views.NotificationViewSet.as_view({"post": "mark_all_as_read"}),
+        name="notification-mark-all-as-read",
+    ),
+    path(
+        "<int:pk>/mark_as_read/",
+        views.NotificationViewSet.as_view({"post": "mark_as_read"}),
+        name="notification-mark-as-read",
+    ),
     path(
         "preferences/",
         views.UserNotificationPreferenceView.as_view(),
         name="notification-preferences",
     ),
     path("test/", views.TestNotificationView.as_view(), name="test-notification"),
+    path("", include(router.urls)),
+    path("", include(messages_router.urls)),
 ]
