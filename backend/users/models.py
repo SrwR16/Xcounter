@@ -135,3 +135,9 @@ class TwoFactorCode(models.Model):
         from django.utils import timezone
 
         return not self.is_used and self.expires_at > timezone.now()
+
+    def is_expired(self):
+        """Check if the code has expired."""
+        from django.utils import timezone
+
+        return self.expires_at <= timezone.now()

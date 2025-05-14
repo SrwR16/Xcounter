@@ -2,33 +2,49 @@
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { zodResolver } from "@hookform/resolvers/zod";
-import axios from "axios";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-// Verification code schema
+// Form validation schema
 const verificationSchema = z.object({
-  code: z
-    .string()
-    .min(6, "Verification code must be 6 digits")
-    .max(6, "Verification code must be 6 digits")
-    .regex(/^\d+$/, "Verification code must contain only digits"),
+  code: z.string().min(4, "Verification code is required").max(10),
 });
 
 type VerificationFormData = z.infer<typeof verificationSchema>;
 
+// Define role types for better type safety
+type UserRole = "ADMIN" | "MODERATOR" | "SALESMAN" | "CUSTOMER";
+
 export default function VerifyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") || "";
-  const userId = searchParams.get("userId") || "";
+  const { verify2FA, user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [resendSuccess, setResendSuccess] = useState(false);
-  const { verify2FA } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const userId = searchParams.get("userId");
+  const email = searchParams.get("email");
+
+  // If no userId or email is provided, or user is already logged in, redirect
+  useEffect(() => {
+    if (user) {
+      const rolePaths: Record<UserRole, string> = {
+        ADMIN: "/admin/dashboard",
+        MODERATOR: "/dashboard",
+        SALESMAN: "/salesman/dashboard",
+        CUSTOMER: "/account",
+      };
+      // Use type assertion for better type safety
+      const role = user.role as UserRole;
+      const redirectPath = rolePaths[role] || "/";
+      router.push(redirectPath);
+    } else if (!userId || !email) {
+      router.push("/login");
+    }
+  }, [user, userId, email, router]);
 
   const {
     register,
@@ -36,131 +52,107 @@ export default function VerifyPage() {
     formState: { errors },
   } = useForm<VerificationFormData>({
     resolver: zodResolver(verificationSchema),
+    defaultValues: {
+      code: "",
+    },
   });
 
   const onSubmit = async (data: VerificationFormData) => {
-    setIsLoading(true);
-    setError("");
-
     try {
+      setIsLoading(true);
+      setError(null);
+      setSuccess(null);
+
       if (!userId) {
-        setError("User ID is missing. Please go back to login page.");
+        setError("Missing user information. Please try again.");
         return;
       }
 
-      // Call verify2FA method from auth provider
+      // Verify 2FA code
       await verify2FA(userId, data.code);
-      // On success, auth provider will redirect to dashboard
-    } catch (err) {
+
+      // Show success message (this will be briefly shown before redirecting)
+      setSuccess("Verification successful! Redirecting to your dashboard...");
+    } catch (error) {
       setError("Invalid verification code. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleResendCode = async () => {
-    setIsLoading(true);
-    setError("");
-    setResendSuccess(false);
-
-    try {
-      if (!userId) {
-        setError("User ID is missing. Please go back to login page.");
-        return;
-      }
-
-      // Call API to resend verification code
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-      await axios.post(`${apiUrl}/users/resend-2fa-code/`, { user_id: userId });
-      setResendSuccess(true);
-    } catch (err) {
-      setError("Failed to resend verification code. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  if (!userId || !email) {
+    return null; // Will redirect in useEffect
+  }
 
   return (
-    <div className="flex min-h-screen flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gray-50">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gray-50">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">Two-Factor Authentication</h2>
+        <div className="flex justify-center">
+          <div className="h-12 w-12 bg-primary-600 rounded-md flex items-center justify-center text-white font-bold text-2xl">
+            X
+          </div>
+        </div>
+        <h2 className="mt-6 text-center text-2xl font-display font-bold text-gray-900">Verification Required</h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          {email ? (
-            <>
-              A verification code has been sent to <strong>{email}</strong>
-            </>
-          ) : (
-            "Please enter the verification code from your email"
-          )}
+          Please enter the verification code sent to your email address
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {error && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-600 rounded-md p-4 text-sm">{error}</div>
+          )}
+
+          {success && (
+            <div className="mb-4 bg-green-50 border border-green-200 text-green-600 rounded-md p-4 text-sm">
+              {success}
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div>
-              <label htmlFor="code" className="block text-sm font-medium leading-6 text-gray-900">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email address
+              </label>
+              <div className="mt-1">
+                <input type="email" value={email || ""} disabled className="input bg-gray-50" />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="code" className="block text-sm font-medium text-gray-700">
                 Verification Code
               </label>
-              <div className="mt-2">
+              <div className="mt-1">
                 <input
                   id="code"
                   type="text"
                   autoComplete="one-time-code"
-                  placeholder="123456"
-                  className={`block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ${
-                    errors.code ? "ring-red-300 focus:ring-red-500" : "ring-gray-300 focus:ring-primary-600"
-                  } placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 px-3`}
+                  className={`input ${errors.code ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                   {...register("code")}
-                />
-                {errors.code && <p className="mt-2 text-sm text-red-600">{errors.code.message}</p>}
-              </div>
-            </div>
-
-            {error && (
-              <div className="rounded-md bg-red-50 p-4">
-                <div className="flex">
-                  <div className="text-sm text-red-700">{error}</div>
-                </div>
-              </div>
-            )}
-
-            {resendSuccess && (
-              <div className="rounded-md bg-green-50 p-4">
-                <div className="flex">
-                  <div className="text-sm text-green-700">A new verification code has been sent to your email.</div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between">
-              <div className="text-sm">
-                <button
-                  type="button"
-                  onClick={handleResendCode}
                   disabled={isLoading}
-                  className="font-medium text-primary-600 hover:text-primary-500 disabled:opacity-50"
-                >
-                  Resend Code
-                </button>
-              </div>
-              <div className="text-sm">
-                <Link href="/login" className="font-medium text-primary-600 hover:text-primary-500">
-                  Back to Login
-                </Link>
+                  autoFocus
+                />
+                {errors.code && <p className="mt-1 text-sm text-red-600">{errors.code.message}</p>}
               </div>
             </div>
 
             <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:opacity-50"
-              >
+              <button type="submit" className="btn btn-primary w-full py-2 px-4" disabled={isLoading}>
                 {isLoading ? "Verifying..." : "Verify"}
               </button>
             </div>
           </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => router.push("/login")}
+              className="text-sm font-medium text-primary-600 hover:text-primary-500"
+            >
+              Return to login
+            </button>
+          </div>
         </div>
       </div>
     </div>

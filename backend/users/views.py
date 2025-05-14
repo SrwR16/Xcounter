@@ -98,12 +98,15 @@ class LoginView(generics.GenericAPIView):
         """Send 2FA code to user's email."""
         from django.conf import settings
         from django.core.mail import send_mail
+        from django.template.loader import render_to_string
 
-        subject = "Your XCounter Two-Factor Authentication Code"
-        message = f"""
-        Hello {user.email},
+        subject = "Your XCounter Verification Code"
 
-        Your two-factor authentication code is: {code}
+        # Plain text message for email clients that don't support HTML
+        plain_message = f"""
+        Hello {user.first_name or user.email},
+
+        Your verification code is: {code}
 
         This code will expire in 10 minutes.
 
@@ -113,12 +116,22 @@ class LoginView(generics.GenericAPIView):
         The XCounter Team
         """
 
+        # HTML message from template
+        html_message = render_to_string(
+            "users/verify_2fa_email.html",
+            {
+                "user": user,
+                "verification_code": code,
+            },
+        )
+
         send_mail(
             subject,
-            message,
+            plain_message,
             settings.DEFAULT_FROM_EMAIL,
             [user.email],
             fail_silently=False,
+            html_message=html_message,
         )
 
 
@@ -350,7 +363,7 @@ class TwoFactorVerificationView(generics.GenericAPIView):
                 user=user, code=code, is_used=False
             ).first()
 
-            if not code_obj or not code_obj.is_valid():
+            if not code_obj or code_obj.is_expired():
                 return Response(
                     {"error": "Invalid or expired verification code."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -416,12 +429,15 @@ class ResendTwoFactorCodeView(generics.GenericAPIView):
         """Send 2FA code to user's email."""
         from django.conf import settings
         from django.core.mail import send_mail
+        from django.template.loader import render_to_string
 
-        subject = "Your XCounter Two-Factor Authentication Code"
-        message = f"""
-        Hello {user.email},
+        subject = "Your XCounter Verification Code"
 
-        Your new two-factor authentication code is: {code}
+        # Plain text message for email clients that don't support HTML
+        plain_message = f"""
+        Hello {user.first_name or user.email},
+
+        Your verification code is: {code}
 
         This code will expire in 10 minutes.
 
@@ -431,12 +447,22 @@ class ResendTwoFactorCodeView(generics.GenericAPIView):
         The XCounter Team
         """
 
+        # HTML message from template
+        html_message = render_to_string(
+            "users/verify_2fa_email.html",
+            {
+                "user": user,
+                "verification_code": code,
+            },
+        )
+
         send_mail(
             subject,
-            message,
+            plain_message,
             settings.DEFAULT_FROM_EMAIL,
             [user.email],
             fail_silently=False,
+            html_message=html_message,
         )
 
 

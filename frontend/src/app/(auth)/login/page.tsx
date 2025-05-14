@@ -4,7 +4,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -17,11 +17,39 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+// Define role types for better type safety
+type UserRole = "ADMIN" | "MODERATOR" | "SALESMAN" | "CUSTOMER";
+
+// Role display names for success messages
+const roleDisplayNames: Record<UserRole, string> = {
+  ADMIN: "Admin",
+  MODERATOR: "Moderator",
+  SALESMAN: "Salesman",
+  CUSTOMER: "Customer",
+};
+
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // If user is already logged in, redirect to appropriate dashboard
+  useEffect(() => {
+    if (user && !authLoading) {
+      const rolePaths: Record<UserRole, string> = {
+        ADMIN: "/admin/dashboard",
+        MODERATOR: "/dashboard",
+        SALESMAN: "/salesman/dashboard",
+        CUSTOMER: "/account",
+      };
+      // Use type assertion or safe access with default
+      const role = user.role as UserRole;
+      const redirectPath = rolePaths[role] || "/";
+      router.push(redirectPath);
+    }
+  }, [user, authLoading, router]);
 
   const {
     register,
@@ -40,14 +68,28 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
       setError(null);
+      setSuccess(null);
 
       // Call login method from auth provider
       const result = await login(data.email, data.password);
 
       // If 2FA is required, redirect to verification page
       if (result.requires2FA && result.userId) {
-        router.push(`/verify?email=${encodeURIComponent(data.email)}&userId=${result.userId}`);
+        setSuccess("Verification required. Redirecting to 2FA verification...");
+        setTimeout(() => {
+          router.push(`/verify?email=${encodeURIComponent(data.email)}&userId=${result.userId}`);
+        }, 1500);
         return;
+      }
+
+      // Show success message based on role
+      if (user) {
+        // Use type assertion or safe access with default
+        const role = user.role as UserRole;
+        const roleName = roleDisplayNames[role] || user.role;
+        setSuccess(`Login successful! Redirecting to ${roleName} dashboard...`);
+      } else {
+        setSuccess("Login successful! Redirecting...");
       }
 
       // Regular users are automatically redirected by the auth provider
@@ -57,6 +99,14 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gray-50">
@@ -79,6 +129,12 @@ export default function LoginPage() {
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           {error && (
             <div className="mb-4 bg-red-50 border border-red-200 text-red-600 rounded-md p-4 text-sm">{error}</div>
+          )}
+
+          {success && (
+            <div className="mb-4 bg-green-50 border border-green-200 text-green-600 rounded-md p-4 text-sm">
+              {success}
+            </div>
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>

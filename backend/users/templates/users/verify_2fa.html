@@ -2,32 +2,42 @@
 {% load static %}
 
 {% block title %}
-  Two-Factor Authentication - XCounter
+  Verification Required - XCounter
 {% endblock %}
 
 {% block content %}
   <div class="container mt-5">
     <div class="row justify-content-center">
       <div class="col-md-6">
-        <div class="card shadow">
-          <div class="card-header bg-primary text-white">
-            <h3 class="mb-0">Two-Factor Authentication</h3>
+        <div class="text-center mb-4">
+          <div class="d-inline-flex justify-content-center align-items-center bg-primary text-white rounded-circle mb-3" style="width: 64px; height: 64px;">
+            <span class="fs-4 fw-bold">X</span>
           </div>
-          <div class="card-body">
+          <h1 class="fw-bold">Verification Required</h1>
+          <p class="text-muted">Please enter the verification code sent to your email address</p>
+        </div>
+
+        <div class="card shadow border-0 rounded-3">
+          <div class="card-body p-4">
             {% if messages %}
               {% for message in messages %}
                 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
               {% endfor %}
             {% endif %}
 
-            <p class="alert alert-info">A verification code has been sent to your email address ({{ email }}). Please enter the 6-digit code to complete login.</p>
+            <div class="alert alert-info d-flex align-items-center" role="alert">
+              <i class="bi bi-info-circle-fill me-2"></i>
+              <div>
+                A verification code has been sent to your email address <strong>{{ email }}</strong>. Please check your inbox.
+              </div>
+            </div>
 
-            <form method="post">
+            <form method="post" class="mt-4">
               {% csrf_token %}
 
               <div class="form-group mb-3">
-                <label for="id_code">Verification Code</label>
-                <input type="text" name="code" id="id_code" class="form-control {% if form.code.errors %}is-invalid{% endif %}" required maxlength="6" minlength="6" autocomplete="off" inputmode="numeric" pattern="[0-9]*" />
+                <label for="id_code" class="form-label fw-medium">Verification Code</label>
+                <input type="text" name="code" id="id_code" class="form-control form-control-lg text-center {% if form.code.errors %}is-invalid{% endif %}" placeholder="Enter 6-digit code" required maxlength="6" minlength="6" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" autofocus />
                 {% if form.code.errors %}
                   <div class="invalid-feedback">{{ form.code.errors }}</div>
                 {% endif %}
@@ -37,20 +47,40 @@
                 <div class="alert alert-danger">{{ form.non_field_errors }}</div>
               {% endif %}
 
-              <button type="submit" class="btn btn-primary w-100 mb-3">Verify Code</button>
+              <button type="submit" class="btn btn-primary w-100 btn-lg mb-3">Verify</button>
             </form>
 
-            <div class="text-center mt-3">
-              <p>
-                Didn't receive the code? <a href="{% url 'users:resend_2fa_code' %}">Resend code</a>
+            <div class="text-center mt-4">
+              <p class="mb-2">
+                <a href="{% url 'users:resend_2fa_code' %}" class="text-decoration-none"><i class="bi bi-arrow-repeat me-1"></i>Didn't receive the code? Resend</a>
               </p>
               <p>
-                <a href="{% url 'users:login' %}">Cancel and return to login</a>
+                <a href="{% url 'users:login' %}" class="text-decoration-none text-muted"><i class="bi bi-arrow-left me-1"></i>Return to login</a>
               </p>
             </div>
           </div>
         </div>
+
+        <div class="mt-4 text-center">
+          <small class="text-muted"><i class="bi bi-shield-lock me-1"></i>The verification code will expire in 10 minutes.</small>
+        </div>
       </div>
     </div>
   </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    // Auto-focus on the verification code input
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('id_code').focus()
+    })
+    
+    // Auto-submit the form when 6 digits are entered
+    document.getElementById('id_code').addEventListener('input', function (e) {
+      if (e.target.value.length === 6 && e.target.validity.valid) {
+        e.target.form.submit()
+      }
+    })
+  </script>
 {% endblock %}

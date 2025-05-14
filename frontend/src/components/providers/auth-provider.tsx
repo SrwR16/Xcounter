@@ -5,12 +5,17 @@ import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 
+// Define user role type for better type safety
+type UserRole = "ADMIN" | "MODERATOR" | "SALESMAN" | "CUSTOMER";
+
 type User = {
   id: string;
   email: string;
   name: string;
-  role: string;
+  role: UserRole;
 };
+
+type RoleMappings = Record<UserRole, string>;
 
 type AuthContextType = {
   user: User | null;
@@ -23,17 +28,27 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Define role to dashboard mappings
+const roleMappings: RoleMappings = {
+  ADMIN: "/admin/dashboard",
+  MODERATOR: "/dashboard",
+  SALESMAN: "/salesman/dashboard",
+  CUSTOMER: "/account",
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check for existing auth token
-    const token = Cookies.get("token");
+    // Check for existing auth token in both cookies and localStorage
+    const token = Cookies.get("token") || localStorage.getItem("token");
     if (token) {
+      // If token exists in localStorage but not in cookies, restore it to cookies
+      if (!Cookies.get("token") && localStorage.getItem("token")) {
+        Cookies.set("token", localStorage.getItem("token") || "", { expires: 7 });
+      }
       fetchUser();
     } else {
       setIsLoading(false);
@@ -43,14 +58,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUser = async () => {
     try {
       setIsLoading(true);
-      const { data } = await axios.get("/api/users/me/", {
+      const token = Cookies.get("token") || localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("No token found");
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+      const { data } = await axios.get(`${apiUrl}/users/me/`, {
         headers: {
-          Authorization: `Token ${Cookies.get("token")}`,
+          Authorization: `Token ${token}`,
         },
       });
+
+      // Store user data
       setUser(data);
+
+      // Also store in localStorage for persistence across tabs/windows
+      localStorage.setItem("user", JSON.stringify(data));
     } catch (error) {
+      // Clear auth data on error
       Cookies.remove("token");
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -68,10 +98,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { requires2FA: true, userId: data.user_id };
       }
 
-      // Regular login flow
+      // Regular login flow - store token in both cookies and localStorage
       Cookies.set("token", data.token, { expires: 7 });
+      localStorage.setItem("token", data.token);
+
+      // Fetch user data
       await fetchUser();
-      router.push("/");
+
+      // Redirect based on role if user exists
+      if (user) {
+        const redirectPath = roleMappings[user.role] || "/";
+        router.push(redirectPath);
+      } else {
+        router.push("/");
+      }
+
       return { requires2FA: false };
     } catch (error) {
       throw new Error("Invalid credentials");
@@ -89,9 +130,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         code,
       });
 
+      // Store token in both cookies and localStorage
       Cookies.set("token", data.token, { expires: 7 });
+      localStorage.setItem("token", data.token);
+
+      // Fetch user data
       await fetchUser();
-      router.push("/dashboard");
+
+      // Redirect based on role
+      if (user) {
+        const redirectPath = roleMappings[user.role] || "/dashboard";
+        router.push(redirectPath);
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error) {
       throw new Error("Invalid verification code");
     } finally {
@@ -100,7 +152,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    // Clear auth data from both cookies and localStorage
     Cookies.remove("token");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
     router.push("/login");
   };
