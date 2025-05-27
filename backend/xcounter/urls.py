@@ -45,12 +45,12 @@ def home_view(request):
                     "test": "api/notifications/test/",
                 },
                 "messaging": {
-                    "conversations": "api/notifications/conversations/",
-                    "messages": "api/notifications/conversations/{conversation_id}/messages/",
-                    "close_conversation": "api/notifications/conversations/{id}/close/",
-                    "reopen_conversation": "api/notifications/conversations/{id}/reopen/",
-                    "mark_message_read": "api/notifications/conversations/{conversation_id}/messages/{id}/mark_read/",
-                    "mark_all_messages_read": "api/notifications/conversations/{conversation_id}/messages/mark_all_read/",
+                    "conversations": "api/messaging/conversations/",
+                    "staff_conversations": "api/messaging/staff/conversations/",
+                    "conversation_detail": "api/messaging/conversations/{id}/",
+                    "messages": "api/messaging/conversations/{conversation_id}/messages/",
+                    "assign_staff": "api/messaging/conversations/{conversation_id}/assign/",
+                    "unread_count": "api/messaging/unread-count/",
                 },
                 "reviews": {
                     "all_reviews": "api/reviews/reviews/",
@@ -85,6 +85,7 @@ class APIRootView(APIView):
                     "dashboard": "/api/dashboard/",
                     "notifications": "/api/notifications/",
                     "reviews": "/api/reviews/",
+                    "messaging": "/api/messaging/",
                     "docs": "/swagger/",
                 },
             },
@@ -105,6 +106,7 @@ urlpatterns = [
     path("api/dashboard/", include("dashboard.urls")),
     path("api/notifications/", include("notifications.urls")),
     path("api/reviews/", include("reviews.urls")),
+    path("api/messaging/", include("messaging.urls")),
 ]
 
 # Serve media files in development

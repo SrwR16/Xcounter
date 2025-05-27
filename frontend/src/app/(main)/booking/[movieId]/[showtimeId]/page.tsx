@@ -3,29 +3,14 @@
 import SiteFooter from "@/components/layout/site-footer";
 import SiteHeader from "@/components/layout/site-header";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useCreateBooking, useMovie, useShow, useValidateCoupon } from "@/hooks/api";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
 import { z } from "zod";
-
-// Types
-interface Movie {
-  id: string;
-  title: string;
-  posterUrl: string;
-  rating: number;
-}
-
-interface Showtime {
-  id: string;
-  date: string;
-  time: string;
-  screen: string;
-  price: number;
-}
 
 interface Seat {
   id: string;
@@ -56,8 +41,13 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [coupon, setCoupon] = useState<Coupon | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("credit-card");
-  const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+
+  // API Hooks
+  const { data: movie, isLoading: isLoadingMovie, error: movieError } = useMovie(parseInt(params.movieId));
+  const { data: show, isLoading: isLoadingShow, error: showError } = useShow(parseInt(params.showtimeId));
+  const createBookingMutation = useCreateBooking();
+  const validateCouponMutation = useValidateCoupon();
 
   // Form for coupon validation
   const {
@@ -69,141 +59,85 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
     resolver: zodResolver(couponSchema),
   });
 
-  // Fetch movie details
-  const { data: movie, isLoading: isLoadingMovie } = useQuery<Movie>({
-    queryKey: ["movie", params.movieId],
-    queryFn: async () => {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      return {
-        id: params.movieId,
-        title: "The Space Beyond",
-        posterUrl: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1450&auto=format&fit=crop",
-        rating: 4.8,
-      };
-    },
-  });
+  // Generate seats based on theater capacity
+  const generateSeats = (capacity: number): Seat[] => {
+    const seats: Seat[] = [];
+    const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+    const seatsPerRow = Math.ceil(capacity / rows.length);
 
-  // Fetch showtime details
-  const { data: showtime, isLoading: isLoadingShowtime } = useQuery<Showtime>({
-    queryKey: ["showtime", params.showtimeId],
-    queryFn: async () => {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      // Extract date and index from showtime ID (format: YYYY-MM-DD-index)
-      const [year, month, day, index] = params.showtimeId.split("-");
-      const date = `${year}-${month}-${day}`;
+    rows.forEach((row, rowIndex) => {
+      for (let i = 1; i <= seatsPerRow; i++) {
+        if (seats.length >= capacity) break;
 
-      // Random time between 10:00 and 22:00
-      const hour = Math.floor(Math.random() * 12) + 10;
-      const minute = Math.random() > 0.5 ? "00" : "30";
-      const time = `${hour}:${minute}`;
+        let type: "standard" | "premium" | "vip" = "standard";
+        let basePrice = show?.price || 12.99;
 
-      return {
-        id: params.showtimeId,
-        date,
-        time,
-        screen: `Screen ${Math.floor(Math.random() * 5) + 1}`,
-        price: 12.99,
-      };
-    },
-  });
-
-  // Fetch available seats
-  const { data: seats, isLoading: isLoadingSeats } = useQuery<Seat[]>({
-    queryKey: ["seats", params.showtimeId],
-    queryFn: async () => {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      // Generate seats for the theater (10 rows A-J, 16 seats per row)
-      const generatedSeats: Seat[] = [];
-      const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
-      const seatsPerRow = 16;
-
-      rows.forEach((row) => {
-        for (let i = 1; i <= seatsPerRow; i++) {
-          // Determine seat type and price based on position
-          let type: "standard" | "premium" | "vip" = "standard";
-          let price = 12.99;
-
-          if (row >= "D" && row <= "G" && i >= 4 && i <= 13) {
-            // Middle seats are premium
-            type = "premium";
-            price = 14.99;
-          } else if (row >= "H" && row <= "J" && i >= 4 && i <= 13) {
-            // Back middle seats are VIP
-            type = "vip";
-            price = 19.99;
-          }
-
-          // Randomly mark some seats as booked (about 30%)
-          const status = Math.random() < 0.3 ? "booked" : "available";
-
-          generatedSeats.push({
-            id: `${row}-${i}`,
-            row,
-            number: i,
-            type,
-            price,
-            status,
-          });
+        // Premium seats in middle rows
+        if (rowIndex >= 3 && rowIndex <= 6 && i >= 4 && i <= seatsPerRow - 3) {
+          type = "premium";
+          basePrice = basePrice * 1.2;
         }
-      });
+        // VIP seats in back middle
+        else if (rowIndex >= 7 && i >= 4 && i <= seatsPerRow - 3) {
+          type = "vip";
+          basePrice = basePrice * 1.5;
+        }
 
-      return generatedSeats;
-    },
-  });
+        // Randomly mark some seats as booked (about 20%)
+        const status = Math.random() < 0.2 ? "booked" : "available";
+
+        seats.push({
+          id: `${row}-${i}`,
+          row,
+          number: i,
+          type,
+          price: parseFloat(basePrice.toFixed(2)),
+          status,
+        });
+      }
+    });
+
+    return seats;
+  };
+
+  const seats = show ? generateSeats(show.theater.capacity) : [];
 
   // Validate coupon code
   const onSubmitCoupon = async (data: CouponFormData) => {
-    // Simulate API call
-    const response = await new Promise<Coupon>((resolve) => {
-      setTimeout(() => {
-        // Mock coupon validation
-        if (data.code.toUpperCase() === "MOVIE25") {
-          resolve({
-            code: data.code.toUpperCase(),
-            discountPercentage: 25,
-            isValid: true,
-            message: "25% discount applied!",
-          });
-        } else if (data.code.toUpperCase() === "SUMMER10") {
-          resolve({
-            code: data.code.toUpperCase(),
-            discountPercentage: 10,
-            isValid: true,
-            message: "10% discount applied!",
-          });
-        } else if (data.code.toUpperCase() === "VIP50") {
-          resolve({
-            code: data.code.toUpperCase(),
-            discountPercentage: 50,
-            isValid: user?.role === "ADMIN" || user?.role === "MODERATOR",
-            message:
-              user?.role === "ADMIN" || user?.role === "MODERATOR"
-                ? "50% staff discount applied!"
-                : "Invalid coupon code for your account type.",
-          });
-        } else {
-          resolve({
-            code: data.code.toUpperCase(),
-            discountPercentage: 0,
-            isValid: false,
-            message: "Invalid or expired coupon code.",
-          });
-        }
-      }, 600);
-    });
+    try {
+      const response = await validateCouponMutation.mutateAsync(data.code);
 
-    setCoupon(response);
+      if (response.is_valid) {
+        setCoupon({
+          code: data.code.toUpperCase(),
+          discountPercentage: response.discount_percentage,
+          isValid: true,
+          message: `${response.discount_percentage}% discount applied!`,
+        });
+        toast.success("Coupon applied successfully!");
+      } else {
+        setCoupon({
+          code: data.code.toUpperCase(),
+          discountPercentage: 0,
+          isValid: false,
+          message: response.message || "Invalid or expired coupon code.",
+        });
+        toast.error("Invalid coupon code");
 
-    if (!response.isValid) {
-      // Reset the form if coupon is invalid
-      setTimeout(() => {
-        reset();
-        setCoupon(null);
-      }, 3000);
+        // Reset form after 3 seconds
+        setTimeout(() => {
+          reset();
+          setCoupon(null);
+        }, 3000);
+      }
+    } catch (error) {
+      toast.error("Failed to validate coupon");
+      setCoupon({
+        code: data.code.toUpperCase(),
+        discountPercentage: 0,
+        isValid: false,
+        message: "Failed to validate coupon code.",
+      });
     }
   };
 
@@ -215,16 +149,14 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
       const isSelected = prev.some((s) => s.id === seat.id);
 
       if (isSelected) {
-        // Deselect the seat
         return prev.filter((s) => s.id !== seat.id);
       } else {
-        // Select the seat
         return [...prev, { ...seat, status: "selected" }];
       }
     });
   };
 
-  // Calculate subtotal, discount, and total price
+  // Calculate prices
   const calculatePrices = () => {
     const subtotal = selectedSeats.reduce((total, seat) => total + seat.price, 0);
     const discount = coupon?.isValid ? (subtotal * coupon.discountPercentage) / 100 : 0;
@@ -238,19 +170,27 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
     if (selectedSeats.length === 0) return;
 
     try {
-      setIsBooking(true);
+      const seatNumbers = selectedSeats.map((seat) =>
+        parseInt(`${seat.row.charCodeAt(0) - 64}${seat.number.toString().padStart(2, "0")}`)
+      );
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const bookingData = {
+        show: parseInt(params.showtimeId),
+        seats: seatNumbers,
+        coupon_code: coupon?.isValid ? coupon.code : undefined,
+      };
+
+      const result = await createBookingMutation.mutateAsync(bookingData);
 
       setBookingSuccess(true);
+      toast.success("Booking successful!");
 
-      // Redirect to confirmation page after 2 seconds
+      // Redirect to confirmation page
       setTimeout(() => {
-        router.push(`/booking/confirmation/${params.movieId}/${Math.random().toString(36).substring(2, 15)}`);
+        router.push(`/booking/confirmation/${params.movieId}/${result.id}`);
       }, 2000);
-    } catch (error) {
-      console.error("Booking failed:", error);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Booking failed. Please try again.");
     }
   };
 
@@ -261,7 +201,7 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
     }
   }, [user, isLoadingMovie, router, params.movieId, params.showtimeId]);
 
-  if (isLoadingMovie || isLoadingShowtime || isLoadingSeats) {
+  if (isLoadingMovie || isLoadingShow) {
     return (
       <div className="min-h-screen bg-gray-50">
         <SiteHeader />
@@ -277,7 +217,7 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
     );
   }
 
-  if (!movie || !showtime || !seats) {
+  if (movieError || showError || !movie || !show) {
     return (
       <div className="min-h-screen bg-gray-50">
         <SiteHeader />
@@ -308,19 +248,19 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
           <div className="bg-white rounded-xl shadow p-6 mb-6">
             <div className="flex flex-col md:flex-row md:items-center">
               <div className="flex-shrink-0 mb-4 md:mb-0 md:mr-6">
-                <Image src={movie.posterUrl} alt={movie.title} width={100} height={150} className="rounded-lg" />
+                <Image
+                  src={movie.poster || `https://picsum.photos/seed/movie-${movie.id}/300/450`}
+                  alt={movie.title}
+                  width={100}
+                  height={150}
+                  className="rounded-lg"
+                />
               </div>
               <div>
                 <h1 className="text-2xl font-display font-bold text-gray-900 mb-2">{movie.title}</h1>
                 <div className="flex flex-col sm:flex-row sm:items-center text-gray-700 gap-2 sm:gap-6">
                   <div className="flex items-center">
-                    <svg
-                      className="w-5 h-5 text-gray-500 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
+                    <svg className="w-5 h-5 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -329,7 +269,7 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                       />
                     </svg>
                     <span>
-                      {new Date(showtime.date).toLocaleDateString("en-US", {
+                      {new Date(show.date).toLocaleDateString("en-US", {
                         weekday: "long",
                         year: "numeric",
                         month: "long",
@@ -338,13 +278,7 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                     </span>
                   </div>
                   <div className="flex items-center">
-                    <svg
-                      className="w-5 h-5 text-gray-500 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
+                    <svg className="w-5 h-5 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -352,16 +286,10 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    <span>{showtime.time}</span>
+                    <span>{show.time}</span>
                   </div>
                   <div className="flex items-center">
-                    <svg
-                      className="w-5 h-5 text-gray-500 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
+                    <svg className="w-5 h-5 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -369,7 +297,7 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                         d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
                       />
                     </svg>
-                    <span>{showtime.screen}</span>
+                    <span>{show.theater.name}</span>
                   </div>
                 </div>
               </div>
@@ -382,7 +310,7 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
               <div className="bg-white rounded-xl shadow p-6 mb-6">
                 <h2 className="text-xl font-display font-bold text-gray-900 mb-6">Select Your Seats</h2>
 
-                {/* Seat selection info */}
+                {/* Seat legend */}
                 <div className="flex flex-wrap gap-4 mb-6">
                   <div className="flex items-center">
                     <div className="w-6 h-6 bg-gray-200 rounded-md mr-2"></div>
@@ -398,11 +326,11 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                   </div>
                   <div className="flex items-center">
                     <div className="w-6 h-6 bg-gray-200 border-2 border-blue-500 rounded-md mr-2"></div>
-                    <span className="text-sm text-gray-700">Premium (${showtime.price + 2})</span>
+                    <span className="text-sm text-gray-700">Premium</span>
                   </div>
                   <div className="flex items-center">
                     <div className="w-6 h-6 bg-gray-200 border-2 border-purple-500 rounded-md mr-2"></div>
-                    <span className="text-sm text-gray-700">VIP (${showtime.price + 7})</span>
+                    <span className="text-sm text-gray-700">VIP</span>
                   </div>
                 </div>
 
@@ -415,7 +343,6 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                 {/* Seats grid */}
                 <div className="w-full overflow-x-auto pb-4">
                   <div className="min-w-max">
-                    {/* Group seats by row */}
                     {Array.from(new Set(seats.map((seat: Seat) => seat.row))).map((row: string) => (
                       <div key={row} className="flex justify-center mb-2">
                         <div className="w-6 text-center text-gray-700 mr-2">{row}</div>
@@ -424,10 +351,8 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                             .filter((seat: Seat) => seat.row === row)
                             .sort((a: Seat, b: Seat) => a.number - b.number)
                             .map((seat: Seat) => {
-                              // Determine if seat is selected
                               const isSelected = selectedSeats.some((s) => s.id === seat.id);
 
-                              // Get seat status class
                               let seatClass =
                                 "w-8 h-8 flex items-center justify-center text-xs rounded-t-md cursor-pointer transition-colors";
 
@@ -437,8 +362,6 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                                 seatClass += " bg-primary-500 text-white";
                               } else {
                                 seatClass += " bg-gray-200 hover:bg-gray-300";
-
-                                // Add borders for premium and VIP seats
                                 if (seat.type === "premium") {
                                   seatClass += " border-2 border-blue-500";
                                 } else if (seat.type === "vip") {
@@ -451,7 +374,7 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                                   key={seat.id}
                                   className={seatClass}
                                   onClick={() => handleSeatClick(seat)}
-                                  disabled={seat.status === "booked"}
+                                  disabled={seat.status === "booked" || createBookingMutation.isPending}
                                   title={`${row}${seat.number} - $${seat.price}`}
                                 >
                                   {seat.number}
@@ -478,7 +401,6 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
                     >
                       <path
                         strokeLinecap="round"
@@ -503,7 +425,6 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                         </span>
                       </div>
 
-                      {/* Group seats by type for pricing */}
                       {["standard", "premium", "vip"].map((type: string) => {
                         const seatsOfType = selectedSeats.filter((seat: Seat) => seat.type === type);
                         if (seatsOfType.length === 0) return null;
@@ -526,10 +447,8 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                           <input
                             type="text"
                             placeholder="Have a coupon code?"
-                            className={`input ${
-                              couponErrors.code ? "border-red-500 focus-visible:ring-red-500" : ""
-                            } ${coupon?.isValid ? "border-green-500" : ""}`}
-                            disabled={isBooking || !!coupon?.isValid}
+                            className={`input ${couponErrors.code ? "border-red-500" : ""} ${coupon?.isValid ? "border-green-500" : ""}`}
+                            disabled={createBookingMutation.isPending || !!coupon?.isValid}
                             {...register("code")}
                           />
                           {couponErrors.code && (
@@ -539,18 +458,17 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                         <button
                           type="submit"
                           className="btn btn-outline py-2 px-4"
-                          disabled={isBooking || !!coupon?.isValid}
+                          disabled={
+                            createBookingMutation.isPending || !!coupon?.isValid || validateCouponMutation.isPending
+                          }
                         >
-                          Apply
+                          {validateCouponMutation.isPending ? "..." : "Apply"}
                         </button>
                       </form>
 
-                      {/* Coupon status message */}
                       {coupon && (
                         <div
-                          className={`mt-2 p-2 text-sm rounded ${
-                            coupon.isValid ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-                          }`}
+                          className={`mt-2 p-2 text-sm rounded ${coupon.isValid ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}
                         >
                           {coupon.message}
                         </div>
@@ -589,7 +507,7 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                               : "border-gray-300 hover:border-gray-400"
                           }`}
                           onClick={() => setPaymentMethod("credit-card")}
-                          disabled={isBooking}
+                          disabled={createBookingMutation.isPending}
                         >
                           <span className="mr-2">💳</span> Credit Card
                         </button>
@@ -601,7 +519,7 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                               : "border-gray-300 hover:border-gray-400"
                           }`}
                           onClick={() => setPaymentMethod("paypal")}
-                          disabled={isBooking}
+                          disabled={createBookingMutation.isPending}
                         >
                           <span className="mr-2">🅿️</span> PayPal
                         </button>
@@ -613,9 +531,9 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                       type="button"
                       className="btn btn-primary w-full py-3"
                       onClick={handleBookSubmit}
-                      disabled={selectedSeats.length === 0 || isBooking}
+                      disabled={selectedSeats.length === 0 || createBookingMutation.isPending}
                     >
-                      {isBooking ? (
+                      {createBookingMutation.isPending ? (
                         <span className="flex items-center justify-center">
                           <svg
                             className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
@@ -644,7 +562,6 @@ export default function BookingPage({ params }: { params: { movieId: string; sho
                       )}
                     </button>
 
-                    {/* Booking success message */}
                     {bookingSuccess && (
                       <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-lg text-center">
                         Booking successful! Redirecting to confirmation...

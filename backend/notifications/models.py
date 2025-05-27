@@ -1,6 +1,5 @@
 from django.db import models
 from django.utils import timezone
-
 from users.models import CustomUser
 
 
@@ -15,6 +14,7 @@ class NotificationType(models.TextChoices):
     USER_INACTIVITY = "USER_INACTIVITY", "User Inactivity"
     PROMOTION = "PROMOTION", "Promotion"
     REVIEW_RESPONSE = "REVIEW_RESPONSE", "Review Response"
+    NEW_MESSAGE = "NEW_MESSAGE", "New Message"  # Added for message notifications
 
 
 class Notification(models.Model):
@@ -49,7 +49,7 @@ class Notification(models.Model):
         max_length=50,
         blank=True,
         null=True,
-        help_text="Optional ID of related object (e.g. booking ID)",
+        help_text="Optional ID of related object (e.g. booking ID, conversation ID)",
     )
     data = models.JSONField(
         null=True, blank=True
@@ -118,54 +118,3 @@ class UserNotificationPreference(models.Model):
 
     def __str__(self):
         return f"{self.user.email}'s notification preferences"
-
-
-class Conversation(models.Model):
-    """
-    Represents a conversation thread between a user and staff member.
-    """
-
-    subject = models.CharField(max_length=200)
-    user = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name="conversations"
-    )
-    is_closed = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Conversation: {self.subject} ({self.user.email})"
-
-    class Meta:
-        ordering = ["-updated_at"]
-        indexes = [
-            models.Index(fields=["user", "-updated_at"]),
-            models.Index(fields=["is_closed"]),
-        ]
-
-
-class Message(models.Model):
-    """
-    Represents an individual message within a conversation.
-    """
-
-    conversation = models.ForeignKey(
-        Conversation, on_delete=models.CASCADE, related_name="messages"
-    )
-    sender = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name="sent_messages"
-    )
-    content = models.TextField()
-    is_read = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Message from {self.sender.email} in {self.conversation.subject}"
-
-    class Meta:
-        ordering = ["created_at"]
-        indexes = [
-            models.Index(fields=["conversation", "created_at"]),
-            models.Index(fields=["sender"]),
-            models.Index(fields=["is_read"]),
-        ]

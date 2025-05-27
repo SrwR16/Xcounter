@@ -1,21 +1,12 @@
 "use client";
 
-import axios from "axios";
+import apiClient, { LoginResponse, User } from "@/lib/api/client";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 
 // Define user role type for better type safety
 type UserRole = "ADMIN" | "MODERATOR" | "SALESMAN" | "CUSTOMER";
-
-type User = {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-};
-
-type RoleMappings = Record<UserRole, string>;
 
 type AuthContextType = {
   user: User | null;
@@ -29,7 +20,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Define role to dashboard mappings
-const roleMappings: RoleMappings = {
+const roleMappings: Record<UserRole, string> = {
   ADMIN: "/admin/dashboard",
   MODERATOR: "/dashboard",
   SALESMAN: "/salesman/dashboard",
@@ -64,18 +55,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("No token found");
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-      const { data } = await axios.get(`${apiUrl}/users/me/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
+      const userData = await apiClient.getCurrentUser();
 
       // Store user data
-      setUser(data);
+      setUser(userData);
 
       // Also store in localStorage for persistence across tabs/windows
-      localStorage.setItem("user", JSON.stringify(data));
+      localStorage.setItem("user", JSON.stringify(userData));
     } catch (error) {
       // Clear auth data on error
       Cookies.remove("token");
@@ -90,32 +76,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-      const { data } = await axios.post(`${apiUrl}/users/login/`, { email, password });
+      const response: LoginResponse = await apiClient.login(email, password);
 
       // Check if 2FA is required
-      if (data.requires_2fa) {
-        return { requires2FA: true, userId: data.user_id };
+      if (response.requires_2fa) {
+        return { requires2FA: true, userId: response.user_id };
       }
 
       // Regular login flow - store token in both cookies and localStorage
-      Cookies.set("token", data.token, { expires: 7 });
-      localStorage.setItem("token", data.token);
+      if (response.token) {
+        Cookies.set("token", response.token, { expires: 7 });
+        localStorage.setItem("token", response.token);
 
-      // Fetch user data
-      await fetchUser();
+        // Fetch user data
+        await fetchUser();
 
-      // Redirect based on role if user exists
-      if (user) {
-        const redirectPath = roleMappings[user.role] || "/";
-        router.push(redirectPath);
-      } else {
-        router.push("/");
+        // Redirect based on role if user exists
+        if (user) {
+          const redirectPath = roleMappings[user.role] || "/";
+          router.push(redirectPath);
+        } else {
+          router.push("/");
+        }
       }
 
       return { requires2FA: false };
-    } catch (error) {
-      throw new Error("Invalid credentials");
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || "Invalid credentials");
     } finally {
       setIsLoading(false);
     }
@@ -124,52 +111,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const verify2FA = async (userId: string, code: string) => {
     try {
       setIsLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-      const { data } = await axios.post(`${apiUrl}/users/verify-2fa/`, {
-        user_id: userId,
-        code,
-      });
+      const response: LoginResponse = await apiClient.verify2FA(userId, code);
 
-      // Store token in both cookies and localStorage
-      Cookies.set("token", data.token, { expires: 7 });
-      localStorage.setItem("token", data.token);
+      if (response.token) {
+        // Store token in both cookies and localStorage
+        Cookies.set("token", response.token, { expires: 7 });
+        localStorage.setItem("token", response.token);
 
-      // Fetch user data
-      await fetchUser();
+        // Fetch user data
+        await fetchUser();
 
-      // Redirect based on role
-      if (user) {
-        const redirectPath = roleMappings[user.role] || "/dashboard";
-        router.push(redirectPath);
-      } else {
-        router.push("/dashboard");
+        // Redirect based on role
+        if (user) {
+          const redirectPath = roleMappings[user.role] || "/dashboard";
+          router.push(redirectPath);
+        } else {
+          router.push("/dashboard");
+        }
       }
-    } catch (error) {
-      throw new Error("Invalid verification code");
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || "Invalid verification code");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    // Clear auth data from both cookies and localStorage
-    Cookies.remove("token");
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
-    router.push("/login");
+  const logout = async () => {
+    try {
+      // Call backend logout endpoint
+      await apiClient.logout();
+    } catch (error) {
+      // Continue with logout even if backend call fails
+      console.warn("Logout API call failed:", error);
+    } finally {
+      // Clear auth data from both cookies and localStorage
+      Cookies.remove("token");
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setUser(null);
+      router.push("/login");
+    }
   };
 
   const register = async (name: string, email: string, password: string) => {
     try {
       setIsLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-      await axios.post(`${apiUrl}/users/register/`, {
-        name,
-        email,
-        password,
-        password_confirm: password,
-      });
+      await apiClient.register(name, email, password);
       // Do NOT log in immediately
       // Instead, show a message to the user (see below)
     } catch (error: any) {
@@ -177,7 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(
         error.response?.data?.email?.[0] === "user with this email already exists."
           ? "This email may already be in use."
-          : "Registration failed"
+          : error.response?.data?.detail || "Registration failed"
       );
     } finally {
       setIsLoading(false);

@@ -1,114 +1,181 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { moviesApi } from "@/lib/api";
+import { Movie, Show } from "@/lib/types";
+import { CalendarIcon, ClockIcon, StarIcon } from "@heroicons/react/24/outline";
+import { format } from "date-fns";
+import Link from "next/link";
+import Image from "next/image";
 import SiteFooter from "@/components/layout/site-footer";
 import SiteHeader from "@/components/layout/site-header";
 import { useAuth } from "@/components/providers/auth-provider";
-import { useQuery } from "@tanstack/react-query";
-import Image from "next/image";
-import Link from "next/link";
-import { useState } from "react";
 
-// Types for movie and filter options
-interface Movie {
-  id: string;
-  title: string;
-  posterUrl: string;
-  genres: string[];
-  releaseDate: string;
-  rating: number;
-  description: string;
+interface MovieCardProps {
+  movie: Movie;
+  onBookNow?: (movieId: number) => void;
 }
 
-interface FilterOptions {
-  genre: string | null;
-  sortBy: "newest" | "rating" | "title";
+function MovieCard({ movie, onBookNow }: MovieCardProps) {
+  const { data: shows } = useQuery({
+    queryKey: ["movie-shows", movie.id],
+    queryFn: () => moviesApi.getShows({ movie: movie.id }).then((res) => res.data.results),
+  });
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
+  };
+
+  const getShowsToday = () => {
+    if (!shows) return [];
+    const today = new Date().toDateString();
+    return shows.filter((show) => new Date(show.start_time).toDateString() === today);
+  };
+
+  const todayShows = getShowsToday();
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+      <div className="relative h-96">
+        <Image
+          src={movie.poster || "/placeholder-movie.jpg"}
+          alt={movie.title}
+          fill
+          className="object-cover"
+        />
+        <div className="absolute top-4 right-4">
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium ${
+              movie.rating === "G"
+                ? "bg-green-100 text-green-800"
+                : movie.rating === "PG"
+                ? "bg-yellow-100 text-yellow-800"
+                : movie.rating === "PG-13"
+                ? "bg-orange-100 text-orange-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {movie.rating}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-2">{movie.title}</h3>
+        <p className="text-gray-600 text-sm mb-3 line-clamp-3">{movie.description}</p>
+
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4 text-sm text-gray-500">
+            <div className="flex items-center">
+              <ClockIcon className="h-4 w-4 mr-1" />
+              {formatDuration(movie.duration)}
+            </div>
+            <div className="flex items-center">
+              <CalendarIcon className="h-4 w-4 mr-1" />
+              {format(new Date(movie.release_date), "MMM d, yyyy")}
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <h4 className="text-sm font-medium text-gray-900 mb-2">Today's Showtimes</h4>
+          {todayShows.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {todayShows.slice(0, 3).map((show) => (
+                <Link
+                  key={show.id}
+                  href={`/booking/${show.id}`}
+                  className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs hover:bg-indigo-200 transition-colors"
+                >
+                  {format(new Date(show.start_time), "h:mm a")}
+                </Link>
+              ))}
+              {todayShows.length > 3 && (
+                <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                  +{todayShows.length - 3} more
+                </span>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">No shows today</p>
+          )}
+        </div>
+
+        <div className="flex justify-between items-center">
+          <Link
+            href={`/movies/${movie.id}`}
+            className="text-indigo-600 hover:text-indigo-500 text-sm font-medium"
+          >
+            View Details
+          </Link>
+          <button
+            onClick={() => onBookNow?.(movie.id)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          >
+            Book Now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface MovieFilters {
+  genre: string;
+  rating: string;
+  search: string;
 }
 
 export default function MoviesPage() {
   const { user } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<FilterOptions>({
-    genre: null,
-    sortBy: "newest",
+  const [filters, setFilters] = useState<MovieFilters>({
+    genre: "",
+    rating: "",
+    search: "",
   });
 
-  // Mock data for development - would be replaced with actual API call
-  const { data: movies, isLoading } = useQuery<Movie[]>({
-    queryKey: ["movies"],
-    queryFn: async () => {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      // Generate mock movies
-      return Array.from({ length: 16 }, (_, i) => {
-        const genres = ["Action", "Adventure", "Comedy", "Drama", "Horror", "Romance", "Sci-Fi", "Thriller"];
-
-        const randomGenres = () => {
-          const shuffled = [...genres].sort(() => 0.5 - Math.random());
-          return shuffled.slice(0, Math.floor(Math.random() * 3) + 1);
-        };
-
-        // Random date within the last year
-        const randomDate = () => {
-          const date = new Date();
-          date.setDate(date.getDate() - Math.floor(Math.random() * 365));
-          return date.toISOString().split("T")[0];
-        };
-
-        return {
-          id: `movie-${i + 1}`,
-          title: [
-            "The Space Beyond",
-            "Eternal Echoes",
-            "Midnight Chronicles",
-            "The Last Memory",
-            "Crystal Kingdom",
-            "Shadow Hunter",
-            "Velocity",
-            "Lost Horizon",
-            "Neon Knights",
-            "Frozen Flames",
-            "Desert Moon",
-            "The Silent Echo",
-            "Starlight Wanderer",
-            "Ocean's Depth",
-            "Mountain Pass",
-            "Urban Legend",
-          ][i],
-          posterUrl: `https://picsum.photos/seed/movie-${i + 1}/300/450`,
-          genres: randomGenres(),
-          releaseDate: randomDate(),
-          rating: (Math.random() * 2 + 3).toFixed(1), // Rating between 3.0 and 5.0
-          description: "A captivating story that will keep you on the edge of your seat.",
-        };
-      });
-    },
+  const { data: movies, isLoading, error } = useQuery({
+    queryKey: ["movies", filters],
+    queryFn: () => moviesApi.getMovies(filters).then((res) => res.data.results),
   });
 
-  // Filter and sort movies based on user input
-  const filteredMovies = movies
-    ? movies
-        .filter((movie) => {
-          const matchesSearch = movie.title.toLowerCase().includes(searchQuery.toLowerCase());
-          const matchesGenre = !filters.genre || movie.genres.includes(filters.genre);
-          return matchesSearch && matchesGenre;
-        })
-        .sort((a, b) => {
-          switch (filters.sortBy) {
-            case "newest":
-              return new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime();
-            case "rating":
-              return parseFloat(b.rating.toString()) - parseFloat(a.rating.toString());
-            case "title":
-              return a.title.localeCompare(b.title);
-            default:
-              return 0;
-          }
-        })
-    : [];
+  const { data: genres } = useQuery({
+    queryKey: ["genres"],
+    queryFn: () => moviesApi.getGenres().then((res) => res.data),
+  });
 
-  // Get all unique genres from movies for filter dropdown
-  const allGenres = movies ? Array.from(new Set(movies.flatMap((movie) => movie.genres))).sort() : [];
+  const handleFilterChange = (key: keyof MovieFilters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({ genre: "", rating: "", search: "" });
+  };
+
+  const handleBookNow = (movieId: number) => {
+    // Redirect to movie detail page where they can select showtimes
+    window.location.href = `/movies/${movieId}`;
+  };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <SiteHeader />
+        <main className="py-10">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center p-10 bg-white rounded-xl shadow">
+              <h3 className="text-xl font-medium text-gray-900 mb-2">Error Loading Movies</h3>
+              <p className="text-gray-600">Unable to load movies. Please try refreshing the page.</p>
+            </div>
+          </div>
+        </main>
+        <SiteFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -132,8 +199,8 @@ export default function MoviesPage() {
                   <input
                     type="text"
                     placeholder="Search movies..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={filters.search}
+                    onChange={(e) => handleFilterChange("search", e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent pl-10"
                   />
                   <svg
@@ -156,12 +223,13 @@ export default function MoviesPage() {
               {/* Genre filter */}
               <div className="w-full md:w-auto">
                 <select
-                  value={filters.genre || ""}
-                  onChange={(e) => setFilters({ ...filters, genre: e.target.value || null })}
+                  id="genre"
+                  value={filters.genre}
+                  onChange={(e) => handleFilterChange("genre", e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
                   <option value="">All Genres</option>
-                  {allGenres.map((genre) => (
+                  {genres?.map((genre) => (
                     <option key={genre} value={genre}>
                       {genre}
                     </option>
@@ -169,84 +237,54 @@ export default function MoviesPage() {
                 </select>
               </div>
 
-              {/* Sort filter */}
+              {/* Rating filter */}
               <div className="w-full md:w-auto">
                 <select
-                  value={filters.sortBy}
-                  onChange={(e) => setFilters({ ...filters, sortBy: e.target.value as "newest" | "rating" | "title" })}
+                  id="rating"
+                  value={filters.rating}
+                  onChange={(e) => handleFilterChange("rating", e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
-                  <option value="newest">Newest First</option>
-                  <option value="rating">Highest Rated</option>
-                  <option value="title">A-Z</option>
+                  <option value="">All Ratings</option>
+                  <option value="G">G</option>
+                  <option value="PG">PG</option>
+                  <option value="PG-13">PG-13</option>
+                  <option value="R">R</option>
+                  <option value="NC-17">NC-17</option>
                 </select>
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={clearFilters}
+                  className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                >
+                  Clear Filters
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Movie Grid */}
+          {/* Movies Grid */}
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
             </div>
-          ) : filteredMovies.length === 0 ? (
-            <div className="text-center p-10 bg-white rounded-xl shadow">
-              <h3 className="text-xl font-medium text-gray-900 mb-2">No movies found</h3>
-              <p className="text-gray-600 mb-4">Try adjusting your search criteria</p>
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setFilters({ genre: null, sortBy: "newest" });
-                }}
-                className="btn btn-primary py-2 px-6"
-              >
-                Clear Filters
-              </button>
+          ) : movies && movies.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {movies.map((movie) => (
+                <MovieCard key={movie.id} movie={movie} onBookNow={handleBookNow} />
+              ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredMovies.map((movie) => (
-                <Link
-                  href={`/movies/${movie.id}`}
-                  key={movie.id}
-                  className="bg-white rounded-xl shadow overflow-hidden hover:shadow-lg transition-shadow group"
-                >
-                  <div className="relative h-80">
-                    <Image
-                      src={movie.posterUrl}
-                      alt={movie.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                    />
-                    <div className="absolute top-2 right-2 bg-primary-900 text-white px-2 py-1 rounded-lg text-sm font-medium">
-                      ★ {movie.rating}
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">{movie.title}</h3>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-gray-600 text-sm">
-                        {new Date(movie.releaseDate).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {movie.genres.map((genre) => (
-                        <span
-                          key={`${movie.id}-${genre}`}
-                          className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded"
-                        >
-                          {genre}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </Link>
-              ))}
+            <div className="text-center py-12">
+              <p className="text-gray-500">No movies found matching your criteria.</p>
+              <button
+                onClick={clearFilters}
+                className="mt-4 text-indigo-600 hover:text-indigo-500"
+              >
+                Clear filters to see all movies
+              </button>
             </div>
           )}
         </div>

@@ -6,14 +6,142 @@ import { useAuth } from "@/components/providers/auth-provider";
 import ProtectedRoute from "@/components/providers/protected-route";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Bar, Line } from "react-chartjs-2";
+import { useEffect, useState } from "react";
+import { Bar, Doughnut, Line, Pie } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import {
+  ChartBarIcon,
+  UsersIcon,
+  FilmIcon,
+  CurrencyDollarIcon,
+  TrendingUpIcon,
+  TrendingDownIcon,
+} from "@heroicons/react/24/outline";
+import { dashboardApi } from "@/lib/api";
+import { DashboardData, DashboardMetric, DashboardChart } from "@/lib/types";
 
-interface DashboardStat {
-  label: string;
-  value: string | number;
-  change: number;
-  icon: React.ReactNode;
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+const iconMap = {
+  users: UsersIcon,
+  movies: FilmIcon,
+  revenue: CurrencyDollarIcon,
+  bookings: ChartBarIcon,
+  default: ChartBarIcon,
+};
+
+interface MetricCardProps {
+  metric: DashboardMetric;
+}
+
+function MetricCard({ metric }: MetricCardProps) {
+  const IconComponent = iconMap[metric.icon as keyof typeof iconMap] || iconMap.default;
+
+  return (
+    <div className="bg-white overflow-hidden shadow rounded-lg">
+      <div className="p-5">
+        <div className="flex items-center">
+          <div className="flex-shrink-0">
+            <IconComponent className={`h-6 w-6 ${metric.color || "text-gray-400"}`} />
+          </div>
+          <div className="ml-5 w-0 flex-1">
+            <dl>
+              <dt className="text-sm font-medium text-gray-500 truncate">{metric.name}</dt>
+              <dd className="flex items-baseline">
+                <div className="text-2xl font-semibold text-gray-900">{metric.value}</div>
+                {metric.change !== undefined && (
+                  <div
+                    className={`ml-2 flex items-baseline text-sm font-semibold ${
+                      metric.change_type === "increase"
+                        ? "text-green-600"
+                        : metric.change_type === "decrease"
+                        ? "text-red-600"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {metric.change_type === "increase" ? (
+                      <TrendingUpIcon className="self-center flex-shrink-0 h-5 w-5 text-green-500" />
+                    ) : metric.change_type === "decrease" ? (
+                      <TrendingDownIcon className="self-center flex-shrink-0 h-5 w-5 text-red-500" />
+                    ) : null}
+                    <span className="sr-only">
+                      {metric.change_type === "increase" ? "Increased" : "Decreased"} by
+                    </span>
+                    {Math.abs(metric.change)}%
+                  </div>
+                )}
+              </dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ChartCardProps {
+  chart: DashboardChart;
+}
+
+function ChartCard({ chart }: ChartCardProps) {
+  const renderChart = () => {
+    const commonOptions = {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: "top" as const,
+        },
+        title: {
+          display: false,
+        },
+      },
+      ...chart.options,
+    };
+
+    switch (chart.type) {
+      case "line":
+        return <Line data={chart.data} options={commonOptions} />;
+      case "bar":
+        return <Bar data={chart.data} options={commonOptions} />;
+      case "pie":
+        return <Pie data={chart.data} options={commonOptions} />;
+      case "doughnut":
+        return <Doughnut data={chart.data} options={commonOptions} />;
+      default:
+        return <Bar data={chart.data} options={commonOptions} />;
+    }
+  };
+
+  return (
+    <div className="bg-white overflow-hidden shadow rounded-lg">
+      <div className="px-4 py-5 sm:p-6">
+        <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">{chart.title}</h3>
+        <div className="h-80">{renderChart()}</div>
+      </div>
+    </div>
+  );
 }
 
 interface Activity {
@@ -26,104 +154,17 @@ interface Activity {
   entityId: string;
 }
 
-// Define types for dashboard data
-interface AdminDashboardData {
-  revenueData: any;
-  bookingsData: any;
-  employeePerformance: any;
-  topMovies: {
-    id: string;
-    title: string;
-    revenue: number;
-    bookings: number;
-  }[];
-  metrics: {
-    totalRevenue: number;
-    totalBookings: number;
-    totalEmployees: number;
-    activePromotions: number;
-  };
-}
-
-export default function AdminDashboardPage() {
+export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useAuth();
-  const [timeframe, setTimeframe] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
+  const [timeRange, setTimeRange] = useState("monthly");
   const [activeTab, setActiveTab] = useState("overview");
 
   // Fetch dashboard data
-  const { data, isLoading } = useQuery({
-    queryKey: ["adminDashboard", timeframe],
-    queryFn: async () => {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Mock data - would be replaced with actual API call in production
-      return {
-        revenueData: {
-          labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-          datasets: [
-            {
-              label: "Revenue",
-              data: [12000, 19000, 15000, 22000, 20000, 25000, 28000, 32000, 38000, 35000, 42000, 50000],
-              backgroundColor: "rgba(59, 130, 246, 0.5)",
-              borderColor: "rgb(59, 130, 246)",
-              borderWidth: 1,
-            },
-          ],
-        },
-        bookingsData: {
-          labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-          datasets: [
-            {
-              label: "Bookings",
-              data: [420, 390, 410, 490, 480, 520, 550, 580, 620, 600, 650, 700],
-              backgroundColor: "rgba(16, 185, 129, 0.5)",
-              borderColor: "rgb(16, 185, 129)",
-              borderWidth: 1,
-            },
-          ],
-        },
-        employeePerformance: {
-          labels: ["John Smith", "Sarah Johnson", "Michael Brown", "Emily Davis", "David Wilson"],
-          datasets: [
-            {
-              label: "Bookings Processed",
-              data: [120, 98, 145, 85, 110],
-              backgroundColor: [
-                "rgba(255, 99, 132, 0.6)",
-                "rgba(54, 162, 235, 0.6)",
-                "rgba(255, 206, 86, 0.6)",
-                "rgba(75, 192, 192, 0.6)",
-                "rgba(153, 102, 255, 0.6)",
-              ],
-              borderColor: [
-                "rgb(255, 99, 132)",
-                "rgb(54, 162, 235)",
-                "rgb(255, 206, 86)",
-                "rgb(75, 192, 192)",
-                "rgb(153, 102, 255)",
-              ],
-              borderWidth: 1,
-            },
-          ],
-        },
-        topMovies: [
-          { id: "1", title: "The Space Beyond", revenue: 28500, bookings: 950 },
-          { id: "2", title: "Eternal Echoes", revenue: 22800, bookings: 760 },
-          { id: "3", title: "Dark Horizon", revenue: 19200, bookings: 640 },
-          { id: "4", title: "Neon Nights", revenue: 17400, bookings: 580 },
-          { id: "5", title: "Crystal Kingdom", revenue: 16500, bookings: 550 },
-        ],
-        metrics: {
-          totalRevenue: 338000,
-          totalBookings: 6460,
-          totalEmployees: 12,
-          activePromotions: 5,
-        },
-      } as AdminDashboardData;
-    },
-    enabled: !!user,
+  const { data, isLoading, error, refetch } = useQuery<DashboardData>({
+    queryKey: ["admin-dashboard", timeRange],
+    queryFn: () => dashboardApi.getRoleBasedDashboard().then((res) => res.data),
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Fetch recent activity
@@ -185,6 +226,11 @@ export default function AdminDashboardPage() {
     enabled: !!user,
   });
 
+  const handleTimeRangeChange = (range: string) => {
+    setTimeRange(range);
+    refetch();
+  };
+
   const formatTimeAgo = (timestamp: string) => {
     const now = Date.now();
     const date = new Date(timestamp);
@@ -223,33 +269,33 @@ export default function AdminDashboardPage() {
             <div className="mb-6 flex space-x-2">
               <button
                 className={`px-4 py-2 rounded-md ${
-                  timeframe === "daily" ? "bg-primary-600 text-white" : "bg-white text-gray-700 hover:bg-gray-100"
+                  timeRange === "daily" ? "bg-primary-600 text-white" : "bg-white text-gray-700 hover:bg-gray-100"
                 }`}
-                onClick={() => setTimeframe("daily")}
+                onClick={() => handleTimeRangeChange("daily")}
               >
                 Daily
               </button>
               <button
                 className={`px-4 py-2 rounded-md ${
-                  timeframe === "weekly" ? "bg-primary-600 text-white" : "bg-white text-gray-700 hover:bg-gray-100"
+                  timeRange === "weekly" ? "bg-primary-600 text-white" : "bg-white text-gray-700 hover:bg-gray-100"
                 }`}
-                onClick={() => setTimeframe("weekly")}
+                onClick={() => handleTimeRangeChange("weekly")}
               >
                 Weekly
               </button>
               <button
                 className={`px-4 py-2 rounded-md ${
-                  timeframe === "monthly" ? "bg-primary-600 text-white" : "bg-white text-gray-700 hover:bg-gray-100"
+                  timeRange === "monthly" ? "bg-primary-600 text-white" : "bg-white text-gray-700 hover:bg-gray-100"
                 }`}
-                onClick={() => setTimeframe("monthly")}
+                onClick={() => handleTimeRangeChange("monthly")}
               >
                 Monthly
               </button>
               <button
                 className={`px-4 py-2 rounded-md ${
-                  timeframe === "yearly" ? "bg-primary-600 text-white" : "bg-white text-gray-700 hover:bg-gray-100"
+                  timeRange === "yearly" ? "bg-primary-600 text-white" : "bg-white text-gray-700 hover:bg-gray-100"
                 }`}
-                onClick={() => setTimeframe("yearly")}
+                onClick={() => handleTimeRangeChange("yearly")}
               >
                 Yearly
               </button>
@@ -305,113 +351,92 @@ export default function AdminDashboardPage() {
               <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
               </div>
+            ) : error ? (
+              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                <div className="text-sm text-red-700">Failed to load dashboard data. Please try again.</div>
+              </div>
             ) : data ? (
               <>
                 {/* Dashboard metrics */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
-                    <p className="mt-2 text-3xl font-bold text-gray-900">
-                      ${data.metrics.totalRevenue.toLocaleString()}
-                    </p>
-                    <div className="mt-1 text-sm text-green-600">+12% from last month</div>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 className="text-sm font-medium text-gray-500">Total Bookings</h3>
-                    <p className="mt-2 text-3xl font-bold text-gray-900">
-                      {data.metrics.totalBookings.toLocaleString()}
-                    </p>
-                    <div className="mt-1 text-sm text-green-600">+8% from last month</div>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 className="text-sm font-medium text-gray-500">Total Employees</h3>
-                    <p className="mt-2 text-3xl font-bold text-gray-900">{data.metrics.totalEmployees}</p>
-                    <div className="mt-1 text-sm text-blue-600">2 new this month</div>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 className="text-sm font-medium text-gray-500">Active Promotions</h3>
-                    <p className="mt-2 text-3xl font-bold text-gray-900">{data.metrics.activePromotions}</p>
-                    <div className="mt-1 text-sm text-yellow-600">3 ending soon</div>
-                  </div>
+                  {data.metrics.map((metric) => (
+                    <MetricCard key={metric.id} metric={metric} />
+                  ))}
                 </div>
 
-                {activeTab === "overview" && (
-                  <>
-                    {/* Revenue and Bookings Charts */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                      <div className="bg-white p-6 rounded-lg shadow-sm">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Revenue</h3>
-                        <div className="h-80">
-                          <Line data={data.revenueData} />
-                        </div>
-                      </div>
-                      <div className="bg-white p-6 rounded-lg shadow-sm">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Bookings</h3>
-                        <div className="h-80">
-                          <Bar data={data.bookingsData} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Top Movies */}
-                    <div className="bg-white rounded-lg shadow-sm mb-8">
-                      <div className="p-6 border-b border-gray-200">
-                        <h3 className="text-lg font-medium text-gray-900">Top Performing Movies</h3>
-                      </div>
-                      <div className="p-6">
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead>
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Movie
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Revenue
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Bookings
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Avg. Ticket Price
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {data.topMovies.map((movie) => (
-                                <tr key={movie.id}>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {movie.title}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    ${movie.revenue.toLocaleString()}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {movie.bookings.toLocaleString()}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    ${(movie.revenue / movie.bookings).toFixed(2)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </>
+                {/* Charts Grid */}
+                {data.charts && (
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    {data.charts.map((chart) => (
+                      <ChartCard key={chart.id} chart={chart} />
+                    ))}
+                  </div>
                 )}
 
-                {activeTab === "employees" && (
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Employee Performance</h3>
-                    <div className="h-80">
-                      <Bar data={data.employeePerformance} />
+                {/* Recent Activities */}
+                {data.recent_activities && data.recent_activities.length > 0 && (
+                  <div className="bg-white shadow rounded-lg">
+                    <div className="px-4 py-5 sm:p-6">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Recent Activities</h3>
+                      <div className="flow-root">
+                        <ul className="-mb-8">
+                          {data.recent_activities.map((activity, activityIdx) => (
+                            <li key={activityIdx}>
+                              <div className="relative pb-8">
+                                {activityIdx !== data.recent_activities.length - 1 ? (
+                                  <span
+                                    className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
+                                    aria-hidden="true"
+                                  />
+                                ) : null}
+                                <div className="relative flex space-x-3">
+                                  <div>
+                                    <span className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center ring-8 ring-white">
+                                      <ChartBarIcon className="h-5 w-5 text-white" />
+                                    </span>
+                                  </div>
+                                  <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                    <div>
+                                      <p className="text-sm text-gray-500">{activity.description}</p>
+                                    </div>
+                                    <div className="text-right text-sm whitespace-nowrap text-gray-500">
+                                      {formatTimeAgo(activity.timestamp)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Additional tabs would be implemented here */}
+                {/* Quick Actions */}
+                <div className="bg-white shadow rounded-lg">
+                  <div className="px-4 py-5 sm:p-6">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Quick Actions</h3>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <FilmIcon className="h-5 w-5 mr-2" />
+                        Add Movie
+                      </button>
+                      <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        <UsersIcon className="h-5 w-5 mr-2" />
+                        Manage Employees
+                      </button>
+                      <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                        <ChartBarIcon className="h-5 w-5 mr-2" />
+                        Generate Report
+                      </button>
+                      <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        <CurrencyDollarIcon className="h-5 w-5 mr-2" />
+                        View Analytics
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </>
             ) : (
               <div className="text-center py-12">
